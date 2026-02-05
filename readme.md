@@ -50,12 +50,12 @@ Türkiye'deki emlak danışmanlarının (agent) portföy ve müşteri yönetimin
 
 ### 2.1 Anthropic API Key (AI Eşleştirme için)
 ```
-ANTHROPIC_API_KEY=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
+ANTHROPIC_API_KEY=[Senin Key'in - .env.local'da tutulmalı]
 ```
 
 ### 2.2 21st.dev API Key (UI Bileşenleri için)
 ```
-TWENTYFIRST_DEV_API_KEY=048ebc0f07df0f7c4e5cf9abb7ebd3009c32c14fb182488b8b2b66bdce227c56
+TWENTYFIRST_DEV_API_KEY=[.env.local'da]
 ```
 
 **21st.dev CLI Kurulum Komutu:**
@@ -75,10 +75,10 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=<SUPABASE_ANON_KEY>
 SUPABASE_SERVICE_ROLE_KEY=<SUPABASE_SERVICE_ROLE_KEY>
 
 # Anthropic API
-ANTHROPIC_API_KEY=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
+ANTHROPIC_API_KEY=[.env.local'da]
 
 # 21st.dev
-TWENTYFIRST_DEV_API_KEY=048ebc0f07df0f7c4e5cf9abb7ebd3009c32c14fb182488b8b2b66bdce227c56
+TWENTYFIRST_DEV_API_KEY=[.env.local'da]
 
 # Mapbox (Harita için)
 NEXT_PUBLIC_MAPBOX_TOKEN=<MAPBOX_PUBLIC_TOKEN>
