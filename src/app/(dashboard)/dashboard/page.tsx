@@ -10,27 +10,7 @@ export const metadata = {
 
 import { NewsWidget } from '@/components/news/news-widget';
 
-export default function DashboardPage() {
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {/* Diğer widget'lar */}
 
-      {/* Haberler Widget'ı */}
-      <div className="lg:col-span-1 bg-white p-6 rounded-lg shadow-sm">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">Son Haberler</h2>
-          <a
-            href="/news"
-            className="text-sm text-blue-600 hover:text-blue-700"
-          >
-            Tümünü Gör →
-          </a>
-        </div>
-        <NewsWidget limit={5} />
-      </div>
-    </div>
-  );
-}
 
 export default async function DashboardPage() {
     try {
