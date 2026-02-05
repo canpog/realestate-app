@@ -4,8 +4,8 @@ import { ParsedNewsArticle } from '@/types/news';
 
 export class SupabaseNewsService {
   private static getClient() {
-  return createClient();
-}
+    return createClient();
+  }
 
   /**
    * Haberler çek ve Supabase'e kaydet
@@ -35,7 +35,7 @@ export class SupabaseNewsService {
         try {
           // Duplicate kontrol (URL bazında)
           const { data: existing, error: checkError } = await this.getClient()
-  .from('news_articles')
+            .from('news_articles')
             .select('id')
             .eq('article_url', article.article_url)
             .single();
@@ -55,7 +55,7 @@ export class SupabaseNewsService {
           }
 
           // Yeni haber ekle
-          const { error: insertError } = await this.supabase
+          const { error: insertError } = await this.getClient()
             .from('news_articles')
             .insert({
               title: article.title,
@@ -90,7 +90,7 @@ export class SupabaseNewsService {
       console.log('Cleaning old articles...');
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-      const { error: deleteError } = await this.supabase
+      const { error: deleteError } = await this.getClient()
         .from('news_articles')
         .delete()
         .lt('published_at', thirtyDaysAgo.toISOString());
@@ -127,7 +127,7 @@ export class SupabaseNewsService {
     limit: number = 10
   ): Promise<ParsedNewsArticle[]> {
     try {
-      let query = this.supabase
+      let query = this.getClient()
         .from('news_articles')
         .select('*')
         .order('published_at', { ascending: false })
@@ -156,7 +156,7 @@ export class SupabaseNewsService {
    */
   static async getFeaturedNews(limit: number = 5): Promise<ParsedNewsArticle[]> {
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await this.getClient()
         .from('news_articles')
         .select('*')
         .eq('is_featured', true)
@@ -180,7 +180,7 @@ export class SupabaseNewsService {
    */
   static async getNewsByCategory(category: string, limit: number = 15): Promise<ParsedNewsArticle[]> {
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await this.getClient()
         .from('news_articles')
         .select('*')
         .eq('category', category)
@@ -207,7 +207,7 @@ export class SupabaseNewsService {
     limit: number = 20
   ): Promise<ParsedNewsArticle[]> {
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await this.getClient()
         .from('news_articles')
         .select('*')
         .or(
