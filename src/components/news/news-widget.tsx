@@ -3,13 +3,13 @@
 import { useEffect, useState } from 'react';
 import { SupabaseNewsService } from '@/lib/news/supabase-news';
 import { ParsedNewsArticle, NewsCategory } from '@/types/news';
-import { Newspaper, TrendingUp, DollarSign, Building2, Bank } from 'lucide-react';
+import { Newspaper, TrendingUp, DollarSign, Building2, Landmark } from 'lucide-react';
 
 const CATEGORY_ICONS: Record<NewsCategory, React.ReactNode> = {
   gayrimenkul: <Building2 className="w-4 h-4" />,
   borsa: <TrendingUp className="w-4 h-4" />,
   ekonomi: <DollarSign className="w-4 h-4" />,
-  merkez_bankasi: <Bank className="w-4 h-4" />,
+  merkez_bankasi: <Landmark className="w-4 h-4" />,
   konut_kredisi: <DollarSign className="w-4 h-4" />,
   yatirim: <TrendingUp className="w-4 h-4" />,
   diger: <Newspaper className="w-4 h-4" />,
