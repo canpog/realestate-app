@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { SupabaseNewsService } from '@/lib/news/supabase-news';
 
 export async function GET(request: Request) {

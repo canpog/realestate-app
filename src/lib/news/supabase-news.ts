@@ -3,7 +3,9 @@ import { NewsAPIService } from './newsapi-service';
 import { ParsedNewsArticle } from '@/types/news';
 
 export class SupabaseNewsService {
-  private static supabase = createClient();
+  private static getClient() {
+  return createClient();
+}
 
   /**
    * Haberler çek ve Supabase'e kaydet
@@ -32,8 +34,8 @@ export class SupabaseNewsService {
       for (const article of parsedArticles) {
         try {
           // Duplicate kontrol (URL bazında)
-          const { data: existing, error: checkError } = await this.supabase
-            .from('news_articles')
+          const { data: existing, error: checkError } = await this.getClient()
+  .from('news_articles')
             .select('id')
             .eq('article_url', article.article_url)
             .single();
