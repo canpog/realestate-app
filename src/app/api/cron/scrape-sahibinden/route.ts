@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import puppeteer from 'puppeteer-core';
-import chromium from '@sparticuz/chromium';
+import chromium from '@sparticuz/chromium-min';
 import { createClient } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 minutes max for Vercel Pro
+
+// Chromium binary URL for serverless - must match @sparticuz/chromium-min version
+const CHROMIUM_BINARY_URL = 'https://github.com/nickmilo/chromium/releases/download/v130.0.0/chromium-v130.0.0-pack.tar';
 
 interface ScrapedProperty {
     title: string;
@@ -61,11 +64,11 @@ async function scrapeProperties(url: string): Promise<ScrapedProperty[]> {
     const properties: ScrapedProperty[] = [];
 
     try {
-        // Launch browser with serverless-optimized Chromium
+        // Launch browser with serverless-optimized Chromium from external URL
         browser = await puppeteer.launch({
             args: chromium.args,
             defaultViewport: { width: 1920, height: 1080 },
-            executablePath: await chromium.executablePath(),
+            executablePath: await chromium.executablePath(CHROMIUM_BINARY_URL),
             headless: true,
         });
 
