@@ -196,10 +196,16 @@ function analyzeProperties(properties: ScrapedProperty[], targetRooms: string): 
 export async function GET(request: NextRequest) {
     const startTime = Date.now();
 
-    // Create Supabase client with service role
+    // Create Supabase client - use service role if available, otherwise anon key
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseKey) {
+        return NextResponse.json({ error: 'Supabase key not configured' }, { status: 500 });
+    }
+
     const supabase = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
+        supabaseKey
     );
 
     try {
