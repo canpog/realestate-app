@@ -27,11 +27,14 @@ export interface Listing {
     city: string;
     district: string;
     neighborhood: string;
+    category?: string;
     lat: number;
     lng: number;
     created_at: string;
     updated_at: string;
     listing_media?: ListingMedia[];
+    listing_tags?: { tag_name: string; }[];
+    listing_flags?: { flag_type: string; color: string; notes?: string; }[];
 }
 
 export interface ListingMedia {

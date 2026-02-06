@@ -7,6 +7,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import FollowUpList from '@/components/follow-ups/follow-up-list';
 import FollowUpModal from '@/components/follow-ups/follow-up-modal';
+import { summarizeNotesAction, getSmartSuggestionsAction, analyzeSentimentAction } from '@/app/actions/ai';
+import { type SentimentAnalysis } from '@/lib/ai/sentiment-analysis';
 
 interface Client {
     id: string;
@@ -59,10 +61,27 @@ export default function ClientDetailClient({ client: initialClient, clientId }: 
     const [matches, setMatches] = useState<MatchResult[] | null>(null);
     const [matchSummary, setMatchSummary] = useState<string | null>(null);
 
+    // AI Summarize States
+    const [summarizing, setSummarizing] = useState(false);
+    const [summary, setSummary] = useState<string | null>(null);
+
+    // Sentiment State
+    const [sentiment, setSentiment] = useState<SentimentAnalysis | null>(null);
+
     // Load notes on mount
     useEffect(() => {
         loadNotes();
+        loadSentiment();
     }, [clientId]);
+
+    const loadSentiment = async () => {
+        try {
+            const result = await analyzeSentimentAction(clientId);
+            setSentiment(result);
+        } catch (e) {
+            console.error(e);
+        }
+    };
 
     const loadNotes = async () => {
         const { data } = await supabase
@@ -151,43 +170,46 @@ export default function ClientDetailClient({ client: initialClient, clientId }: 
         setMatchSummary(null);
 
         try {
-            const res = await fetch('/api/ai/match', {
-                method: 'POST',
-                body: JSON.stringify({ clientId }),
-                headers: { 'Content-Type': 'application/json' }
-            });
-
-            if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.error || 'Eşleştirme hatası');
-            }
-
-            const data = await res.json();
+            const matches = await getSmartSuggestionsAction(clientId);
 
             // Enrich matches with listing details
-            if (data.matches && data.matches.length > 0) {
-                const listingIds = data.matches.map((m: any) => m.listing_id);
+            if (matches && matches.length > 0) {
+                const listingIds = matches.map((m: any) => m.listing_id);
                 const { data: listings } = await supabase
                     .from('listings')
                     .select('*, listing_media(storage_path, is_cover)')
                     .in('id', listingIds);
 
-                const enrichedMatches = data.matches.map((match: any) => ({
+                const enrichedMatches = matches.map((match: any) => ({
                     ...match,
                     listing_details: listings?.find(l => l.id === match.listing_id)
                 }));
 
                 setMatches(enrichedMatches);
+                setMatchSummary(`AI, ${matches.length} adet uygun portföy buldu.`);
             } else {
                 setMatches([]);
+                setMatchSummary('Uygun eşleşme bulunamadı.');
             }
-
-            setMatchSummary(data.summary);
 
         } catch (error: any) {
             alert('AI Eşleştirme hatası: ' + error.message);
         } finally {
             setMatching(false);
+        }
+    };
+
+    const runSummarize = async () => {
+        setSummarizing(true);
+        setSummary(null);
+
+        try {
+            const summaryText = await summarizeNotesAction(clientId);
+            setSummary(summaryText);
+        } catch (error: any) {
+            alert('AI Özetleme hatası: ' + error.message);
+        } finally {
+            setSummarizing(false);
         }
     };
 
@@ -237,6 +259,21 @@ export default function ClientDetailClient({ client: initialClient, clientId }: 
                         <span className={`mt-2 px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(client.status)}`}>
                             {getStatusLabel(client.status)}
                         </span>
+
+                        {sentiment && (
+                            <div className={`mt-4 p-3 rounded-lg border text-sm ${sentiment.sentiment === 'positive' ? 'bg-green-50 border-green-200 text-green-800' :
+                                    sentiment.sentiment === 'negative' ? 'bg-red-50 border-red-200 text-red-800' :
+                                        'bg-gray-50 border-gray-200 text-gray-800'
+                                }`}>
+                                <div className="font-bold flex items-center justify-center gap-2">
+                                    {sentiment.sentiment === 'positive' ? '😊 Olumlu' : sentiment.sentiment === 'negative' ? '😟 Olumsuz' : '😐 Nötr'}
+                                    <span className="text-xs opacity-75">
+                                        (Skor: {Math.round(sentiment.score * 100)})
+                                    </span>
+                                </div>
+                                <p className="text-xs mt-1 opacity-90">{sentiment.description}</p>
+                            </div>
+                        )}
 
                         <div className="mt-6 space-y-4 text-left">
                             <ContactItem icon={<Phone className="h-4 w-4" />} value={client.phone || 'Telefon yok'} />
@@ -304,6 +341,39 @@ export default function ClientDetailClient({ client: initialClient, clientId }: 
                         <div className="p-6">
                             {activeTab === 'notes' && (
                                 <>
+                                    <div className="flex justify-between items-center mb-6">
+                                        <h3 className="font-bold text-gray-900">Müşteri Notları</h3>
+                                        <button
+                                            onClick={runSummarize}
+                                            disabled={summarizing || notes.length === 0}
+                                            className="flex items-center px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 disabled:opacity-50 text-sm font-medium transition-colors"
+                                        >
+                                            {summarizing ? (
+                                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                            ) : (
+                                                <Sparkles className="h-4 w-4 mr-2" />
+                                            )}
+                                            {summarizing ? 'Özetleniyor...' : 'AI ile Özetle'}
+                                        </button>
+                                    </div>
+
+                                    {summary && (
+                                        <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-5 mb-6 animate-in fade-in slide-in-from-top-2">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <h4 className="font-bold text-indigo-900 flex items-center">
+                                                    <Sparkles className="h-4 w-4 mr-2 text-indigo-600" />
+                                                    Müşteri Profil Özeti
+                                                </h4>
+                                                <button onClick={() => setSummary(null)} className="text-indigo-400 hover:text-indigo-600">
+                                                    <XCircle className="h-4 w-4" />
+                                                </button>
+                                            </div>
+                                            <div className="text-indigo-900 text-sm whitespace-pre-wrap leading-relaxed">
+                                                {summary.replace(/\*\*(.*?)\*\*/g, '$1')}
+                                            </div>
+                                        </div>
+                                    )}
+
                                     <div className="flex space-x-3 mb-8">
                                         <input
                                             type="text"

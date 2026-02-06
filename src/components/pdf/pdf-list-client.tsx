@@ -44,7 +44,10 @@ export default function PDFListClient({ pdfExports }: { pdfExports: PDFExport[] 
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-extrabold text-gray-900">📄 PDF Arşivi</h1>
+                    <h1 className="text-3xl font-extrabold text-gray-900 flex items-center gap-3">
+                        <FileText className="h-8 w-8 text-blue-600" />
+                        PDF Arşivi
+                    </h1>
                     <p className="text-gray-500 mt-1">Oluşturduğunuz tüm PDF dosyaları</p>
                 </div>
                 <Badge variant="secondary" className="w-fit">

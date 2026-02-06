@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Search, Home, Users, FileText, Settings, Plus, Map,
-    LogOut, User, LayoutDashboard, ChevronRight
+    LogOut, User, LayoutDashboard, ChevronRight,
+    ArrowUp, ArrowDown, CornerDownLeft
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 
@@ -211,8 +212,8 @@ export default function CommandMenu() {
                     {/* Footer */}
                     <div className="bg-gray-50 px-4 py-2 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
                         <div className="flex gap-3">
-                            <span><strong className="font-medium text-gray-700">↑↓</strong> Seç</span>
-                            <span><strong className="font-medium text-gray-700">↵</strong> Git</span>
+                            <span><strong className="font-medium text-gray-700 flex items-center gap-0.5"><ArrowUp className="w-3 h-3" /><ArrowDown className="w-3 h-3" /></strong> Seç</span>
+                            <span><strong className="font-medium text-gray-700 flex items-center gap-0.5"><CornerDownLeft className="w-3 h-3" /></strong> Git</span>
                         </div>
                         <div>
                             Portföy ve Müşterilerde arama yapar

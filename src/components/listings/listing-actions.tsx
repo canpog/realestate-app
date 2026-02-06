@@ -75,8 +75,14 @@ export default function ListingActions({ id }: { id: string }) {
                         )}
                     </button>
                     <Link
+                        href={`/listings/${id}/valuation`}
+                        className="px-6 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all active:scale-95 flex items-center"
+                    >
+                        Değerleme
+                    </Link>
+                    <Link
                         href={`/listings/${id}/edit`}
-                        className="px-6 py-2 border border-gray-200 rounded-xl text-sm font-bold hover:bg-gray-50 hover:border-gray-300 transition-all active:scale-95"
+                        className="px-6 py-2 border border-blue-100 bg-blue-50 text-blue-700 rounded-xl text-sm font-bold hover:bg-blue-100 hover:border-blue-200 transition-all active:scale-95"
                     >
                         Düzenle
                     </Link>
@@ -119,8 +125,8 @@ export default function ListingActions({ id }: { id: string }) {
                                 <button
                                     onClick={copyLink}
                                     className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${copied
-                                            ? 'bg-green-600 text-white'
-                                            : 'bg-blue-600 text-white hover:bg-blue-700'
+                                        ? 'bg-green-600 text-white'
+                                        : 'bg-blue-600 text-white hover:bg-blue-700'
                                         }`}
                                 >
                                     {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}

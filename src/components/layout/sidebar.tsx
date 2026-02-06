@@ -22,7 +22,11 @@ import {
     Brain,
     Flame,
     Moon,
-    Sun
+    Sun,
+    Newspaper,
+    Calculator,
+    DollarSign,
+    FileSpreadsheet
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -76,6 +80,9 @@ const navItems: NavItem[] = [
     },
     { name: 'PDF\'lerim', href: '/pdfs', icon: FileText },
     { name: 'AI Eşleştirme', href: '/matching', icon: Brain },
+    { name: 'Değerleme', href: '/valuation', icon: Calculator },
+    { name: 'Satış & Komisyon', href: '/sales', icon: DollarSign },
+    { name: 'Haberler', href: '/news', icon: Newspaper },
 ];
 
 const bottomNavItems: NavItem[] = [

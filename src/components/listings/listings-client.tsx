@@ -11,30 +11,8 @@ import {
 import { Badge } from '@/components/ui/badge';
 import PDFModal from '@/components/pdf/pdf-modal';
 
-interface ListingMedia {
-    id: string;
-    storage_path: string;
-    is_cover: boolean;
-}
-
-interface Listing {
-    id: string;
-    title: string;
-    price: number;
-    currency: string;
-    city: string;
-    district: string;
-    neighborhood: string;
-    type: string;
-    status: string;
-    purpose: string;
-    rooms: string;
-    sqm: number;
-    floor: number;
-    total_floors: number;
-    created_at: string;
-    listing_media: ListingMedia[];
-}
+import { type Listing } from '@/types/listing';
+import { PORTFOLIO_CATEGORIES } from '@/types/portfolio';
 
 type ViewMode = 'grid' | 'list' | 'table';
 type SortField = 'created_at' | 'price' | 'title' | 'sqm';
@@ -47,6 +25,12 @@ const PROPERTY_TYPES = [
     { value: 'commercial', label: 'Ticari' },
     { value: 'office', label: 'Ofis' },
 ];
+
+const CATEGORY_OPTIONS = Object.entries(PORTFOLIO_CATEGORIES).map(([key, value]) => ({
+    value: key,
+    label: value.label,
+    icon: value.icon
+}));
 
 const STATUS_OPTIONS = [
     { value: 'available', label: 'Aktif', color: 'bg-green-100 text-green-700' },
@@ -75,6 +59,7 @@ export default function ListingsClient({ listings: initialListings }: { listings
     const [searchTerm, setSearchTerm] = useState('');
     const [sortField, setSortField] = useState<SortField>('created_at');
     const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+    const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
     const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
     const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -95,6 +80,11 @@ export default function ListingsClient({ listings: initialListings }: { listings
                 l.city?.toLowerCase().includes(search) ||
                 l.district?.toLowerCase().includes(search)
             );
+        }
+
+        // Category filter
+        if (selectedCategories.length > 0) {
+            result = result.filter(l => l.category && selectedCategories.includes(l.category));
         }
 
         // Type filter
@@ -131,7 +121,7 @@ export default function ListingsClient({ listings: initialListings }: { listings
         });
 
         return result;
-    }, [initialListings, searchTerm, selectedTypes, selectedStatuses, sortField, sortOrder, priceRange, sqmRange]);
+    }, [initialListings, searchTerm, selectedCategories, selectedTypes, selectedStatuses, sortField, sortOrder, priceRange, sqmRange]);
 
     const toggleSelect = (id: string) => {
         setSelectedIds(prev =>
@@ -148,6 +138,7 @@ export default function ListingsClient({ listings: initialListings }: { listings
     };
 
     const clearFilters = () => {
+        setSelectedCategories([]);
         setSelectedTypes([]);
         setSelectedStatuses([]);
         setPriceRange([0, 100000000]);
@@ -176,7 +167,7 @@ export default function ListingsClient({ listings: initialListings }: { listings
         return `${price.toLocaleString('tr-TR')} ${currency}`;
     };
 
-    const activeFiltersCount = selectedTypes.length + selectedStatuses.length +
+    const activeFiltersCount = selectedCategories.length + selectedTypes.length + selectedStatuses.length +
         (priceRange[0] > 0 || priceRange[1] < 100000000 ? 1 : 0) +
         (sqmRange[0] > 0 || sqmRange[1] < 1000 ? 1 : 0);
 
@@ -185,7 +176,10 @@ export default function ListingsClient({ listings: initialListings }: { listings
             {/* Header */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-extrabold text-gray-900">🏠 Portföyler</h1>
+                    <h1 className="text-3xl font-extrabold text-gray-900 flex items-center gap-3">
+                        <Home className="h-8 w-8 text-blue-600" />
+                        Portföyler
+                    </h1>
                     <p className="text-gray-500 mt-1">
                         {filteredListings.length} portföy listeleniyor
                         {activeFiltersCount > 0 && ` (${activeFiltersCount} filtre aktif)`}
@@ -294,6 +288,30 @@ export default function ListingsClient({ listings: initialListings }: { listings
                         >
                             <div className="pt-4 mt-4 border-t border-gray-100">
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    {/* Category */}
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">Kategori</label>
+                                        <div className="flex flex-wrap gap-2">
+                                            {CATEGORY_OPTIONS.map(cat => (
+                                                <button
+                                                    key={cat.value}
+                                                    onClick={() => setSelectedCategories(prev =>
+                                                        prev.includes(cat.value)
+                                                            ? prev.filter(c => c !== cat.value)
+                                                            : [...prev, cat.value]
+                                                    )}
+                                                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${selectedCategories.includes(cat.value)
+                                                        ? 'bg-blue-600 text-white'
+                                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                                        }`}
+                                                >
+                                                    <cat.icon className="w-3.5 h-3.5" />
+                                                    {cat.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
                                     {/* Property Type */}
                                     <div>
                                         <label className="block text-sm font-bold text-gray-700 mb-2">Emlak Tipi</label>

@@ -23,10 +23,14 @@ import {
     Calendar,
     Clock,
     ArrowUpRight,
-    TrendingUp
+    TrendingUp,
+    UserPlus,
+    Rocket
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import NewsWidget from '@/components/dashboard/news-widget';
+import FollowUpList from '@/components/follow-up/follow-up-list';
 
 interface DashboardData {
     agent: any;
@@ -38,7 +42,7 @@ interface DashboardData {
     };
     recentListings: any[];
     weeklyData: { name: string; portfoy: number; musteri: number }[];
-    activities: { type: string; title: string; time: string; icon: string }[];
+    activities: { type: string; title: string; time: string }[];
 }
 
 export default function DashboardClient({ data }: { data: DashboardData }) {
@@ -81,7 +85,6 @@ export default function DashboardClient({ data }: { data: DashboardData }) {
                         <span className="bg-gradient-to-r from-blue-600 to-cyan-500 bg-clip-text text-transparent">
                             {agent?.full_name?.split(' ')[0] || 'Danışman'}
                         </span>
-                        {' '}👋
                     </h1>
                     <p className="text-gray-500 mt-1 flex items-center">
                         <Calendar className="h-4 w-4 mr-2" />
@@ -209,7 +212,7 @@ export default function DashboardClient({ data }: { data: DashboardData }) {
 
                         {recentListings.length === 0 ? (
                             <div className="flex flex-col items-center justify-center h-48 text-gray-400 bg-gray-50 rounded-xl border border-dashed border-gray-200">
-                                <span className="text-4xl mb-2">🏘️</span>
+                                <span className="mb-2 p-3 bg-white rounded-full shadow-sm"><Home className="w-6 h-6 text-gray-400" /></span>
                                 <p className="text-sm font-medium">Henüz portföy eklenmemiş</p>
                                 <Link
                                     href="/listings/new"
@@ -271,7 +274,10 @@ export default function DashboardClient({ data }: { data: DashboardData }) {
                         transition={{ delay: 0.3 }}
                         className="bg-white rounded-2xl p-6 shadow-xl shadow-gray-100/50 border border-gray-100"
                     >
-                        <h2 className="text-lg font-bold text-gray-900 mb-4">🚀 Hızlı Aksiyonlar</h2>
+                        <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                            <Rocket className="h-5 w-5 text-blue-600" />
+                            Hızlı Aksiyonlar
+                        </h2>
                         <div className="grid grid-cols-2 gap-3">
                             <QuickActionCard
                                 title="Portföy Ekle"
@@ -300,6 +306,26 @@ export default function DashboardClient({ data }: { data: DashboardData }) {
                         </div>
                     </motion.div>
 
+                    {/* Follow Ups */}
+                    <motion.div
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.35 }}
+                        className="h-80"
+                    >
+                        <FollowUpList />
+                    </motion.div>
+
+                    {/* News Widget */}
+                    <motion.div
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.4 }}
+                        className="h-80"
+                    >
+                        <NewsWidget />
+                    </motion.div>
+
                     {/* Activity Feed */}
                     <motion.div
                         initial={{ opacity: 0, x: 20 }}
@@ -325,8 +351,8 @@ export default function DashboardClient({ data }: { data: DashboardData }) {
                                         transition={{ delay: 0.5 + i * 0.1 }}
                                         className="flex items-start gap-3"
                                     >
-                                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-sm">
-                                            {activity.icon}
+                                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-sm border border-blue-100">
+                                            {activity.type === 'listing' ? <Home className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className="text-sm text-gray-900 truncate">{activity.title}</p>

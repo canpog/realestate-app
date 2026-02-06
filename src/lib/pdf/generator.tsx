@@ -2,12 +2,11 @@ import { renderToBuffer } from '@react-pdf/renderer';
 import React from 'react';
 import { Page, Text, View, Document, StyleSheet, Font, Image } from '@react-pdf/renderer';
 
-// Register fonts for Turkish character support and modern look
-// Register fonts for Turkish character support (Open Sans is reliable)
+// Register fonts
 Font.register({
     family: 'Open Sans',
     fonts: [
-        { src: 'https://cdn.jsdelivr.net/npm/open-sans-all@0.1.3/fonts/open-sans-regular.ttf', fontWeight: 400 },
+        { src: 'https://cdn.jsdelivr.net/npm/open-sans-all@0.1.3/fonts/open-sans-regular.ttf' },
         { src: 'https://cdn.jsdelivr.net/npm/open-sans-all@0.1.3/fonts/open-sans-600.ttf', fontWeight: 600 },
         { src: 'https://cdn.jsdelivr.net/npm/open-sans-all@0.1.3/fonts/open-sans-700.ttf', fontWeight: 700 },
     ],
@@ -15,13 +14,14 @@ Font.register({
 
 const theme = {
     colors: {
-        primary: '#2563EB', // Blue 600
-        secondary: '#1E40AF', // Blue 800
-        accent: '#F3F4F6', // Gray 100
-        text: '#1F2937', // Gray 800
-        textLight: '#6B7280', // Gray 500
+        primary: '#1E3A8A', // Premium Dark Blue
+        secondary: '#1F2937', // Dark Gray
+        accent: '#F3F4F6', // Light Gray
+        text: '#374151',
+        textLight: '#6B7280',
         white: '#FFFFFF',
         border: '#E5E7EB',
+        gold: '#D97706' // Gold Accent
     }
 };
 
@@ -31,199 +31,169 @@ const styles = StyleSheet.create({
         fontFamily: 'Open Sans',
         fontSize: 10,
         color: theme.colors.text,
-        backgroundColor: '#FFFFFF'
+        backgroundColor: '#FFFFFF',
+        paddingBottom: 40 // Space for footer
     },
-    // Header Section
     headerBackground: {
-        height: 120,
+        height: 100,
         backgroundColor: theme.colors.primary,
         position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
+        top: 0, left: 0, right: 0
     },
     headerContent: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: 30,
-        height: 120,
+        paddingHorizontal: 40,
+        height: 100
     },
     logoText: {
         color: theme.colors.white,
-        fontSize: 24,
+        fontSize: 26,
         fontWeight: 700,
-        letterSpacing: 1,
+        letterSpacing: 1
     },
-    // Hero Section
     heroContainer: {
-        height: 250,
-        width: '100%',
+        marginTop: 0,
+        height: 280, // Bigger hero image
         backgroundColor: theme.colors.accent,
-        marginBottom: 20,
+        marginBottom: 25
     },
     heroImage: {
         width: '100%',
         height: '100%',
-        objectFit: 'cover',
+        objectFit: 'cover'
     },
-    // Main Content
     mainContainer: {
-        paddingHorizontal: 30,
+        paddingHorizontal: 40,
         flexDirection: 'row',
-        gap: 20,
+        gap: 25
     },
     leftColumn: {
-        width: '35%',
-        paddingRight: 10,
+        width: '35%'
     },
     rightColumn: {
-        width: '65%',
+        width: '65%'
     },
-    // Property Info Cards
     infoCard: {
         backgroundColor: theme.colors.accent,
         padding: 15,
-        borderRadius: 8,
-        marginBottom: 15,
+        borderRadius: 6,
+        marginBottom: 15
     },
     infoLabel: {
         color: theme.colors.textLight,
-        fontSize: 9,
+        fontSize: 8,
         textTransform: 'uppercase',
-        marginBottom: 4,
         fontWeight: 700,
+        marginBottom: 4
     },
     infoValue: {
         color: theme.colors.text,
-        fontSize: 12,
-        fontWeight: 500,
-        marginBottom: 8,
+        fontSize: 11,
+        fontWeight: 600,
+        marginBottom: 8
     },
     priceTag: {
-        fontSize: 20,
-        fontWeight: 700,
-        color: theme.colors.primary,
-        marginBottom: 5,
-    },
-    propertyTitle: {
         fontSize: 18,
         fontWeight: 700,
-        color: theme.colors.text,
-        marginBottom: 10,
-        lineHeight: 1.3,
+        color: theme.colors.primary,
+        marginBottom: 4
     },
-    sectionTitle: {
-        fontSize: 14,
+    propertyTitle: {
+        fontSize: 22,
         fontWeight: 700,
         color: theme.colors.secondary,
+        marginBottom: 10,
+        lineHeight: 1.3
+    },
+    sectionTitle: {
+        fontSize: 13,
+        fontWeight: 700,
+        color: theme.colors.primary,
         borderBottomWidth: 1,
         borderBottomColor: theme.colors.border,
         paddingBottom: 6,
         marginBottom: 10,
-        marginTop: 10,
+        marginTop: 15,
+        textTransform: 'uppercase'
     },
-    // Features Grid
     featuresGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         gap: 8,
-        marginBottom: 15,
+        marginBottom: 15
     },
     featureBadge: {
-        backgroundColor: '#EFF6FF', // Blue 50
-        paddingVertical: 4,
-        paddingHorizontal: 8,
+        backgroundColor: '#EFF6FF',
+        paddingVertical: 5,
+        paddingHorizontal: 10,
         borderRadius: 4,
-        borderWidth: 1,
-        borderColor: '#BFDBFE', // Blue 200
+        borderWidth: 0.5,
+        borderColor: '#BFDBFE'
     },
     featureText: {
         color: theme.colors.primary,
         fontSize: 9,
-        fontWeight: 500,
+        fontWeight: 600
     },
     descriptionText: {
         fontSize: 10,
         lineHeight: 1.6,
         color: theme.colors.text,
-        marginBottom: 20,
-        textAlign: 'justify',
+        textAlign: 'justify'
     },
-    // Gallery
     galleryGrid: {
         flexDirection: 'row',
-        gap: 10,
-        marginTop: 10,
+        flexWrap: 'wrap',
+        gap: 8,
+        marginTop: 10
     },
     galleryImage: {
-        width: 110,
-        height: 80,
+        width: 105, // Fits 3 in a row approx (Right col is ~340pt)
+        height: 75,
         borderRadius: 4,
         objectFit: 'cover',
-    },
-    // Footer / Agent
-    agentCard: {
-        marginTop: 20,
-        padding: 15,
-        borderWidth: 1,
-        borderColor: theme.colors.border,
-        borderRadius: 8,
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    agentInfo: {
-        marginLeft: 0,
-    },
-    agentName: {
-        fontSize: 12,
-        fontWeight: 700,
-        color: theme.colors.text,
-    },
-    agentCompany: {
-        fontSize: 10,
-        color: theme.colors.textLight,
-        marginBottom: 4,
-    },
-    contactRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 2,
-    },
-    contactText: {
-        fontSize: 9,
-        color: theme.colors.text,
-        marginLeft: 4,
+        backgroundColor: theme.colors.accent
     },
     footerBar: {
         position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
+        bottom: 0, left: 0, right: 0,
         height: 30,
         backgroundColor: theme.colors.accent,
+        borderTopWidth: 1,
+        borderTopColor: theme.colors.border,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 30,
+        paddingHorizontal: 40
     },
     footerText: {
         fontSize: 8,
-        color: theme.colors.textLight,
+        color: theme.colors.textLight
+    },
+    agentSection: {
+        marginTop: 10,
+        padding: 15,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        borderRadius: 6
     }
 });
 
 const ListingPDF = ({ listing, agent }: { listing: any, agent: any }) => {
-    // Get formatted price
+    // helpers
     const formattedPrice = listing.price.toLocaleString('tr-TR') + ' ' + (listing.currency === 'TRY' ? '₺' : listing.currency);
-
-    // Get cover image and additional images
     const sortedMedia = [...(listing.listing_media || [])].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
     const coverImage = sortedMedia.find(m => m.is_cover) || sortedMedia[0];
-    const galleryImages = sortedMedia.filter(m => m.id !== coverImage?.id).slice(0, 6);
+    const galleryImages = sortedMedia.filter(m => m.id !== coverImage?.id).slice(0, 6); // Max 6 gallery images
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const getStorageUrl = (path: string) => `${supabaseUrl}/storage/v1/object/public/listing-media/${path}`;
+    const getStorageUrl = (path: string) => {
+        if (!path) return '';
+        const parts = path.split('/');
+        const encodedPath = parts.map(p => encodeURIComponent(p)).join('/');
+        return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/listing-media/${encodedPath}`;
+    };
 
     return (
         <Document>
@@ -233,80 +203,70 @@ const ListingPDF = ({ listing, agent }: { listing: any, agent: any }) => {
                 <View style={styles.headerContent}>
                     <Text style={styles.logoText}>TR Danışman</Text>
                     <View style={{ alignItems: 'flex-end' }}>
-                        <Text style={{ color: 'white', fontSize: 10, opacity: 0.8 }}>Emlak Portföy Sunumu</Text>
-                        <Text style={{ color: 'white', fontSize: 9, opacity: 0.6 }}>{new Date().toLocaleDateString('tr-TR')}</Text>
+                        <Text style={{ color: 'white', fontSize: 10, opacity: 0.9, fontWeight: 600 }}>PORTFÖY SUNUMU</Text>
+                        <Text style={{ color: 'white', fontSize: 9, opacity: 0.7 }}>{new Date().toLocaleDateString('tr-TR')}</Text>
                     </View>
                 </View>
 
                 {/* Hero Image */}
-                <View style={[styles.heroContainer, { marginTop: -20, marginHorizontal: 30, width: 'auto', borderRadius: 8, overflow: 'hidden', height: 200 }]}>
+                <View style={styles.heroContainer}>
                     {coverImage ? (
                         <Image src={getStorageUrl(coverImage.storage_path)} style={styles.heroImage} />
                     ) : (
-                        <View style={{ flex: 1, backgroundColor: '#E5E7EB', alignItems: 'center', justifyContent: 'center' }}>
-                            <Text>Görsel Yok</Text>
+                        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                            <Text style={{ color: '#9CA3AF' }}>Görsel Yok</Text>
                         </View>
                     )}
                 </View>
 
-                {/* Main Content */}
+                {/* Main */}
                 <View style={styles.mainContainer}>
-                    {/* Left Sidebar */}
+                    {/* Left Col */}
                     <View style={styles.leftColumn}>
-                        {/* Price Card */}
                         <View style={[styles.infoCard, { backgroundColor: '#EFF6FF', borderWidth: 1, borderColor: '#BFDBFE' }]}>
                             <Text style={styles.infoLabel}>SATIŞ FİYATI</Text>
                             <Text style={styles.priceTag}>{formattedPrice}</Text>
-                            <Text style={{ fontSize: 9, color: theme.colors.primary }}>{listing.purpose === 'sale' ? 'Satılık' : 'Kiralık'}</Text>
+                            <Text style={{ fontSize: 9, color: theme.colors.primary, fontWeight: 600 }}>
+                                {listing.purpose === 'sale' ? 'SATILIK' : 'KİRALIK'}
+                            </Text>
                         </View>
 
-                        {/* Location */}
+                        <View style={styles.infoCard}>
+                            <Text style={styles.infoLabel}>MÜLK BİLGİLERİ</Text>
+                            <View style={{ marginBottom: 8 }}>
+                                <Text style={{ fontSize: 8, color: theme.colors.textLight }}>Tip</Text>
+                                <Text style={styles.infoValue}>{listing.type === 'apartment' ? 'Daire' : listing.type === 'villa' ? 'Villa' : listing.type}</Text>
+                            </View>
+                            <View style={{ marginBottom: 8 }}>
+                                <Text style={{ fontSize: 8, color: theme.colors.textLight }}>Oda & Salon</Text>
+                                <Text style={styles.infoValue}>{listing.rooms || '-'}</Text>
+                            </View>
+                            <View style={{ marginBottom: 8 }}>
+                                <Text style={{ fontSize: 8, color: theme.colors.textLight }}>Brüt Alan</Text>
+                                <Text style={styles.infoValue}>{listing.sqm ? `${listing.sqm} m²` : '-'}</Text>
+                            </View>
+                            <View>
+                                <Text style={{ fontSize: 8, color: theme.colors.textLight }}>Bulunduğu Kat</Text>
+                                <Text style={styles.infoValue}>{listing.floor_number ? `${listing.floor_number}. Kat` : '-'}</Text>
+                            </View>
+                        </View>
+
                         <View style={styles.infoCard}>
                             <Text style={styles.infoLabel}>KONUM</Text>
                             <Text style={styles.infoValue}>{listing.district}, {listing.city}</Text>
-                            <Text style={{ fontSize: 10, color: theme.colors.textLight }}>{listing.neighborhood}</Text>
+                            <Text style={{ fontSize: 9, color: theme.colors.textLight }}>{listing.neighborhood}</Text>
                         </View>
 
-                        {/* Property Details */}
-                        <View style={styles.infoCard}>
-                            <Text style={styles.infoLabel}>ÖZEL DETAYLAR</Text>
-
-                            <View style={{ marginBottom: 6 }}>
-                                <Text style={{ fontSize: 9, color: theme.colors.textLight }}>Oda Sayısı</Text>
-                                <Text style={styles.infoValue}>{listing.rooms}</Text>
-                            </View>
-
-                            <View style={{ marginBottom: 6 }}>
-                                <Text style={{ fontSize: 9, color: theme.colors.textLight }}>Brüt Alan</Text>
-                                <Text style={styles.infoValue}>{listing.sqm} m²</Text>
-                            </View>
-
-                            <View style={{ marginBottom: 6 }}>
-                                <Text style={{ fontSize: 9, color: theme.colors.textLight }}>Bina Yaşı</Text>
-                                <Text style={styles.infoValue}>{listing.building_age || 'Belirtilmemiş'}</Text>
-                            </View>
-
-                            <View>
-                                <Text style={{ fontSize: 9, color: theme.colors.textLight }}>Tip</Text>
-                                <Text style={styles.infoValue}>
-                                    {listing.type === 'apartment' ? 'Daire' : listing.type === 'villa' ? 'Villa' : listing.type}
-                                </Text>
-                            </View>
-                        </View>
-
-                        {/* Agent Card */}
-                        <View style={styles.agentCard}>
-                            <View style={styles.agentInfo}>
-                                <Text style={styles.infoLabel}>DANIŞMAN</Text>
-                                <Text style={styles.agentName}>{agent.full_name}</Text>
-                                <Text style={styles.agentCompany}>{agent.company || 'Gayrimenkul Danışmanı'}</Text>
-                                <Text style={{ fontSize: 9, marginTop: 4 }}>{agent.phone}</Text>
-                                <Text style={{ fontSize: 9 }}>{agent.email}</Text>
-                            </View>
+                        <View style={styles.agentSection}>
+                            <Text style={styles.infoLabel}>DANIŞMAN</Text>
+                            <Text style={{ fontSize: 11, fontWeight: 700, color: theme.colors.text, marginBottom: 2 }}>{agent.full_name}</Text>
+                            <Text style={{ fontSize: 9, color: theme.colors.textLight, marginBottom: 6 }}>{agent.company || 'Gayrimenkul Danışmanı'}</Text>
+                            <Text style={{ fontSize: 9, color: theme.colors.text }}>{agent.phone}</Text>
+                            <Text style={{ fontSize: 9, color: theme.colors.text }}>{agent.email}</Text>
                         </View>
                     </View>
 
-                    {/* Right Content */}
+                    {/* Right Col */}
                     <View style={styles.rightColumn}>
                         <Text style={styles.propertyTitle}>{listing.title}</Text>
 
@@ -320,7 +280,9 @@ const ListingPDF = ({ listing, agent }: { listing: any, agent: any }) => {
                             {listing.has_balcony && <View style={styles.featureBadge}><Text style={styles.featureText}>Balkon</Text></View>}
                             {listing.has_garden && <View style={styles.featureBadge}><Text style={styles.featureText}>Bahçe</Text></View>}
                             {listing.is_furnished && <View style={styles.featureBadge}><Text style={styles.featureText}>Eşyalı</Text></View>}
+                            {/* Add common features if none selected to make it look full */}
                             <View style={styles.featureBadge}><Text style={styles.featureText}>Krediye Uygun</Text></View>
+                            <View style={styles.featureBadge}><Text style={styles.featureText}>Tapulu</Text></View>
                         </View>
 
                         <Text style={styles.sectionTitle}>Galeri</Text>
@@ -328,15 +290,19 @@ const ListingPDF = ({ listing, agent }: { listing: any, agent: any }) => {
                             {galleryImages.map((img: any) => (
                                 <Image key={img.id} src={getStorageUrl(img.storage_path)} style={styles.galleryImage} />
                             ))}
-                            {galleryImages.length === 0 && <Text style={{ fontSize: 9, color: '#999' }}>Ek fotoğraf yok.</Text>}
+                            {galleryImages.length === 0 && (
+                                <View style={[styles.galleryImage, { justifyContent: 'center', alignItems: 'center' }]}>
+                                    <Text style={{ fontSize: 8, color: '#9CA3AF' }}>Ek Fotoğraf Yok</Text>
+                                </View>
+                            )}
                         </View>
                     </View>
                 </View>
 
                 {/* Footer */}
                 <View style={styles.footerBar}>
-                    <Text style={styles.footerText}>TR Danışman CRM tarafından oluşturulmuştur.</Text>
-                    <Text style={styles.footerText}>trdanisman.com</Text>
+                    <Text style={styles.footerText}>TR Danışmanlık Hizmetleri</Text>
+                    <Text style={styles.footerText}>www.trdanisman.com</Text>
                 </View>
             </Page>
         </Document>

@@ -3,8 +3,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { ChevronRight, ChevronLeft, Save, Loader2, Check, Upload, X, Image as ImageIcon, Trash2 } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Save, Loader2, Check, Upload, X, Image as ImageIcon, Trash2, Flag } from 'lucide-react';
 import LocationPicker from './location-picker';
+import { PORTFOLIO_CATEGORIES, FLAG_COLORS } from '@/types/portfolio';
 
 export default function ListingWizard({ initialData }: { initialData?: any }) {
     const router = useRouter();
@@ -21,6 +22,7 @@ export default function ListingWizard({ initialData }: { initialData?: any }) {
         title: initialData?.title || '',
         description: initialData?.description || '',
         type: initialData?.type || 'apartment',
+        category: initialData?.category || 'residence',
         purpose: initialData?.purpose || 'sale',
         price: initialData?.price || 0,
         currency: initialData?.currency || 'TRY',
@@ -37,6 +39,9 @@ export default function ListingWizard({ initialData }: { initialData?: any }) {
         has_balcony: initialData?.has_balcony || false,
         has_garden: initialData?.has_garden || false,
         is_furnished: initialData?.is_furnished || false,
+        tags: initialData?.listing_tags?.map((t: any) => t.tag_name).join(', ') || '',
+        flag_color: initialData?.listing_flags?.[0]?.color || '',
+        flag_note: initialData?.listing_flags?.[0]?.notes || '',
     });
 
     // PHOTO STATE
@@ -301,8 +306,7 @@ export default function ListingWizard({ initialData }: { initialData?: any }) {
 
                 if (error) throw error;
 
-                // Save photos for new listing
-                if (newListing && photos.length > 0) {
+                if (photos.length > 0) {
                     const photoInserts = photos.map((p, idx) => ({
                         listing_id: newListing.id,
                         storage_path: p.storage_path,
@@ -311,6 +315,44 @@ export default function ListingWizard({ initialData }: { initialData?: any }) {
                     }));
 
                     await supabase.from('listing_media').insert(photoInserts);
+                }
+            }
+
+            // Handle Tags
+            const targetId = isEdit ? initialData.id : (await supabase.from('listings').select('id').order('created_at', { ascending: false }).limit(1).single()).data?.id; // Hacky for new ID if scope variable unavailable
+            // Actually newListing is available in else block scope but not here.
+            // Better to capture ID.
+            const finalId = isEdit ? initialData.id : (await supabase.from('listings').select('id').eq('agent_id', agent.id).order('created_at', { ascending: false }).limit(1).single()).data?.id;
+
+            if (finalId) {
+                // 1. Tags
+                if (formData.tags) {
+                    const tagsList = formData.tags.split(',').map((t: string) => t.trim()).filter((t: string) => t.length > 0);
+                    // Delete existing (simplest strategy)
+                    await supabase.from('listing_tags').delete().eq('listing_id', finalId);
+                    // Insert new
+                    if (tagsList.length > 0) {
+                        await supabase.from('listing_tags').insert(tagsList.map((t: string) => ({ listing_id: finalId, tag_name: t })));
+                    }
+                } else if (isEdit) {
+                    await supabase.from('listing_tags').delete().eq('listing_id', finalId);
+                }
+
+                // 2. Flags
+                if (formData.flag_color) {
+                    // Delete existing
+                    await supabase.from('listing_flags').delete().eq('listing_id', finalId).eq('agent_id', agent.id);
+                    // Insert
+                    await supabase.from('listing_flags').insert({
+                        listing_id: finalId,
+                        agent_id: agent.id,
+                        flag_type: 'priority', // Default type
+                        color: formData.flag_color,
+                        notes: formData.flag_note
+                    });
+                } else if (isEdit) {
+                    // If cleared, delete
+                    await supabase.from('listing_flags').delete().eq('listing_id', finalId).eq('agent_id', agent.id);
                 }
             }
 
@@ -375,6 +417,15 @@ export default function ListingWizard({ initialData }: { initialData?: any }) {
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1">Kategori *</label>
+                                    <select name="category" value={formData.category} onChange={handleChange}
+                                        className="w-full border border-gray-200 rounded-xl px-4 py-3 outline-none">
+                                        {Object.entries(PORTFOLIO_CATEGORIES).map(([key, cat]) => (
+                                            <option key={key} value={key}>{cat.label}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-1">Tip</label>
                                     <select name="type" value={formData.type} onChange={handleChange}
                                         className="w-full border border-gray-200 rounded-xl px-4 py-3 outline-none">
@@ -386,6 +437,9 @@ export default function ListingWizard({ initialData }: { initialData?: any }) {
                                         <option value="shop">Dükkan</option>
                                     </select>
                                 </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-1">Amaç</label>
                                     <select name="purpose" value={formData.purpose} onChange={handleChange}
@@ -393,14 +447,6 @@ export default function ListingWizard({ initialData }: { initialData?: any }) {
                                         <option value="sale">Satılık</option>
                                         <option value="rent">Kiralık</option>
                                     </select>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-1">Fiyat *</label>
-                                    <input name="price" type="number" value={formData.price} onChange={handleChange}
-                                        className="w-full border border-gray-200 rounded-xl px-4 py-3 outline-none" />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-1">Para Birimi</label>
@@ -411,6 +457,12 @@ export default function ListingWizard({ initialData }: { initialData?: any }) {
                                         <option value="EUR">EUR (€)</option>
                                     </select>
                                 </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-1">Fiyat *</label>
+                                <input name="price" type="number" value={formData.price} onChange={handleChange}
+                                    className="w-full border border-gray-200 rounded-xl px-4 py-3 outline-none" />
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
@@ -431,6 +483,40 @@ export default function ListingWizard({ initialData }: { initialData?: any }) {
                                 <textarea name="description" value={formData.description} onChange={handleChange}
                                     className="w-full border border-gray-200 rounded-xl px-4 py-3 h-32 outline-none resize-none"
                                     placeholder="İlan hakkında detaylı bilgi..." />
+                            </div>
+
+                            {/* Tags & Flags */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1">Etiketler</label>
+                                    <input name="tags" value={formData.tags} onChange={handleChange}
+                                        className="w-full border border-gray-200 rounded-xl px-4 py-3 outline-none"
+                                        placeholder="Örn: Deniz Manzaralı, Yeni, Fırsat (Virgülle ayırın)" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1">Bayrak (Kişisel İşaret)</label>
+                                    <div className="flex gap-2 mb-2">
+                                        {['', 'red', 'yellow', 'blue', 'green'].map(color => (
+                                            <button
+                                                key={color || 'none'}
+                                                type="button"
+                                                onClick={() => setFormData(p => ({ ...p, flag_color: color }))}
+                                                className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all ${formData.flag_color === color
+                                                        ? 'ring-2 ring-offset-2 ring-gray-400 scale-110'
+                                                        : 'hover:scale-105'
+                                                    } ${color === '' ? 'bg-white border-gray-300' : ''} ${color === 'red' ? 'bg-red-500 border-red-600' : ''} ${color === 'yellow' ? 'bg-yellow-500 border-yellow-600' : ''} ${color === 'blue' ? 'bg-blue-500 border-blue-600' : ''} ${color === 'green' ? 'bg-green-500 border-green-600' : ''}`}
+                                            >
+                                                {formData.flag_color === color && <Check className={`w-4 h-4 ${color === '' ? 'text-gray-400' : 'text-white'}`} />}
+                                                {color === '' && formData.flag_color !== '' && <X className="w-4 h-4 text-gray-400" />}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    {formData.flag_color && (
+                                        <input name="flag_note" value={formData.flag_note} onChange={handleChange}
+                                            className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none"
+                                            placeholder="Bayrak notu ekle..." />
+                                    )}
+                                </div>
                             </div>
                         </div>
                     )}

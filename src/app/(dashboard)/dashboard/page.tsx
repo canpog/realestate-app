@@ -108,8 +108,7 @@ export default async function DashboardPage() {
             activities.push({
                 type: 'listing',
                 title: `Yeni portföy eklendi: "${listing.title}"`,
-                time: listing.created_at,
-                icon: '🏠'
+                time: listing.created_at
             });
         });
 
@@ -117,8 +116,7 @@ export default async function DashboardPage() {
             activities.push({
                 type: 'client',
                 title: `Yeni müşteri: ${client.full_name}`,
-                time: client.created_at,
-                icon: '👤'
+                time: client.created_at
             });
         });
 

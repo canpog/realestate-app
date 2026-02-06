@@ -10,6 +10,7 @@ import {
     Clock, Banknote, Home, ChevronRight, UserCheck
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import FollowUpModal from '../follow-up/follow-up-modal';
 
 interface Client {
     id: string;
@@ -34,18 +35,18 @@ type ViewMode = 'list' | 'grid' | 'kanban';
 type SortField = 'created_at' | 'full_name' | 'budget_max' | 'status';
 
 const STATUS_CONFIG = {
-    new: { label: 'Yeni', color: 'bg-blue-100 text-blue-700', icon: Users, emoji: '🆕' },
-    following: { label: 'Takipte', color: 'bg-purple-100 text-purple-700', icon: Eye, emoji: '👀' },
-    hot: { label: 'Sıcak', color: 'bg-red-100 text-red-700', icon: Flame, emoji: '🔥' },
-    cold: { label: 'Soğuk', color: 'bg-cyan-100 text-cyan-700', icon: Snowflake, emoji: '❄️' },
-    closed: { label: 'Kapandı', color: 'bg-green-100 text-green-700', icon: UserCheck, emoji: '✅' },
+    new: { label: 'Yeni', color: 'bg-blue-100 text-blue-700', icon: Users },
+    following: { label: 'Takipte', color: 'bg-purple-100 text-purple-700', icon: Eye },
+    hot: { label: 'Sıcak', color: 'bg-red-100 text-red-700', icon: Flame },
+    cold: { label: 'Soğuk', color: 'bg-cyan-100 text-cyan-700', icon: Snowflake },
+    closed: { label: 'Kapandı', color: 'bg-green-100 text-green-700', icon: UserCheck },
 };
 
-const KANBAN_COLUMNS: Array<{ status: keyof typeof STATUS_CONFIG; label: string; emoji: string }> = [
-    { status: 'new', label: 'Yeni', emoji: '🆕' },
-    { status: 'following', label: 'Takipte', emoji: '👀' },
-    { status: 'hot', label: 'Sıcak', emoji: '🔥' },
-    { status: 'closed', label: 'Kapandı', emoji: '✅' },
+const KANBAN_COLUMNS: Array<{ status: keyof typeof STATUS_CONFIG; label: string }> = [
+    { status: 'new', label: 'Yeni' },
+    { status: 'following', label: 'Takipte' },
+    { status: 'hot', label: 'Sıcak' },
+    { status: 'closed', label: 'Kapandı' },
 ];
 
 const container = {
@@ -208,8 +209,9 @@ export default function ClientsClient({ clients: initialClients }: { clients: Cl
                                 {client.full_name}
                             </Link>
                             {!compact && (
-                                <Badge className={STATUS_CONFIG[client.status]?.color || 'bg-gray-100 text-gray-700'}>
-                                    {STATUS_CONFIG[client.status]?.emoji} {STATUS_CONFIG[client.status]?.label}
+                                <Badge className={`flex items-center gap-1.5 ${STATUS_CONFIG[client.status]?.color || 'bg-gray-100 text-gray-700'}`}>
+                                    <StatusIcon className="w-3 h-3" />
+                                    {STATUS_CONFIG[client.status]?.label}
                                 </Badge>
                             )}
                         </div>
@@ -279,6 +281,16 @@ export default function ClientsClient({ clients: initialClients }: { clients: Cl
                                 WhatsApp
                             </a>
                         )}
+                        <FollowUpModal
+                            clientId={client.id}
+                            clientName={client.full_name}
+                            trigger={
+                                <button className="flex-1 flex items-center justify-center py-1.5 rounded-lg text-xs font-medium text-purple-600 hover:bg-purple-50">
+                                    <Clock className="h-3.5 w-3.5 mr-1" />
+                                    Takip
+                                </button>
+                            }
+                        />
                     </div>
                 )}
             </motion.div>
@@ -290,7 +302,10 @@ export default function ClientsClient({ clients: initialClients }: { clients: Cl
             {/* Header */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-extrabold text-gray-900">👥 Müşteriler (CRM)</h1>
+                    <h1 className="text-3xl font-extrabold text-gray-900 flex items-center gap-3">
+                        <Users className="h-8 w-8 text-blue-600" />
+                        Müşteriler (CRM)
+                    </h1>
                     <p className="text-gray-500 mt-1">
                         {filteredClients.length} müşteri
                         {activeFiltersCount > 0 && ` (${activeFiltersCount} filtre aktif)`}
@@ -384,7 +399,8 @@ export default function ClientsClient({ clients: initialClients }: { clients: Cl
                                                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                                 }`}
                                         >
-                                            {config.emoji} {config.label}
+                                            <config.icon className="w-4 h-4" />
+                                            {config.label}
                                         </button>
                                     ))}
                                 </div>
@@ -431,10 +447,12 @@ export default function ClientsClient({ clients: initialClients }: { clients: Cl
                                 : ''
                                 }`}
                         >
-                            {/* Column Header */}
                             <div className="flex items-center justify-between mb-4">
                                 <div className="flex items-center gap-2">
-                                    <span className="text-xl">{column.emoji}</span>
+                                    {(() => {
+                                        const Icon = STATUS_CONFIG[column.status]?.icon;
+                                        return Icon ? <Icon className="w-5 h-5 text-gray-500" /> : null;
+                                    })()}
                                     <span className="font-bold text-gray-700">{column.label}</span>
                                     <Badge variant="secondary" className="ml-1">
                                         {clientsByStatus[column.status]?.length || 0}
@@ -520,8 +538,12 @@ export default function ClientsClient({ clients: initialClients }: { clients: Cl
                                             {client.wanted_city || '-'}
                                         </td>
                                         <td className="p-3">
-                                            <Badge className={STATUS_CONFIG[client.status]?.color || 'bg-gray-100 text-gray-700'}>
-                                                {STATUS_CONFIG[client.status]?.emoji} {STATUS_CONFIG[client.status]?.label}
+                                            <Badge className={`flex items-center gap-1 ${STATUS_CONFIG[client.status]?.color || 'bg-gray-100 text-gray-700'}`}>
+                                                {(() => {
+                                                    const Icon = STATUS_CONFIG[client.status]?.icon;
+                                                    return Icon ? <Icon className="w-3 h-3" /> : null;
+                                                })()}
+                                                {STATUS_CONFIG[client.status]?.label}
                                             </Badge>
                                         </td>
                                         <td className="p-3 text-sm text-gray-500">
@@ -540,6 +562,15 @@ export default function ClientsClient({ clients: initialClients }: { clients: Cl
                                                         <MessageCircle className="h-4 w-4 text-green-600" />
                                                     </a>
                                                 )}
+                                                <FollowUpModal
+                                                    clientId={client.id}
+                                                    clientName={client.full_name}
+                                                    trigger={
+                                                        <button className="p-1.5 rounded hover:bg-purple-100">
+                                                            <Clock className="h-4 w-4 text-purple-600" />
+                                                        </button>
+                                                    }
+                                                />
                                             </div>
                                         </td>
                                     </tr>
@@ -555,7 +586,7 @@ export default function ClientsClient({ clients: initialClients }: { clients: Cl
                 {Object.entries(STATUS_CONFIG).map(([status, config]) => (
                     <div key={status} className="bg-white rounded-xl p-4 border border-gray-100">
                         <div className="flex items-center gap-2 mb-1">
-                            <span>{config.emoji}</span>
+                            <config.icon className="w-4 h-4 text-gray-500" />
                             <span className="text-xs font-bold text-gray-400 uppercase">{config.label}</span>
                         </div>
                         <p className="text-2xl font-black text-gray-900">
