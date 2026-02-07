@@ -168,7 +168,7 @@ export default function ValuationClient({ listing }: { listing?: any }) {
                         <ArrowLeft className="h-4 w-4 mr-1" />
                         Analize Dön
                     </button>
-                    <h1 className="text-2xl font-bold text-gray-900">Değerleme Raporu</h1>
+                    <h1 className="text-2xl font-bold text-gray-900">Değerleme Raporu (v1.3 TEST)</h1>
                 </div>
 
                 <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-xl overflow-hidden relative">
