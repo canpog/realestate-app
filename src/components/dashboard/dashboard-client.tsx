@@ -25,7 +25,8 @@ import {
     ArrowUpRight,
     TrendingUp,
     UserPlus,
-    Rocket
+    Rocket,
+    Eye
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -39,6 +40,7 @@ interface DashboardData {
         totalClients: number;
         hotClients: number;
         pdfExports: number;
+        totalViews?: number;
     };
     recentListings: any[];
     weeklyData: { name: string; portfoy: number; musteri: number }[];
@@ -120,10 +122,17 @@ export default function DashboardClient({ data }: { data: DashboardData }) {
                 />
                 <StatCard
                     title="Bu Hafta PDF"
-                    value={stats.pdfExports}
+                    value={stats.pdfExports || 0}
                     icon={<FileText className="h-6 w-6" />}
                     color="purple"
                     delay={0.3}
+                />
+                <StatCard
+                    title="Toplam Görüntülenme"
+                    value={stats.totalViews || 0}
+                    icon={<Eye className="h-6 w-6" />}
+                    color="cyan"
+                    delay={0.4}
                 />
             </div>
 
@@ -365,7 +374,7 @@ export default function DashboardClient({ data }: { data: DashboardData }) {
                     </motion.div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }
 
@@ -380,7 +389,7 @@ function StatCard({
     title: string;
     value: number;
     icon: React.ReactNode;
-    color: 'blue' | 'green' | 'orange' | 'purple';
+    color: 'blue' | 'green' | 'orange' | 'purple' | 'cyan';
     trend?: number;
     delay?: number;
 }) {
@@ -408,6 +417,12 @@ function StatCard({
             icon: 'bg-purple-500 text-white',
             text: 'text-purple-600',
             shadow: 'shadow-purple-500/20'
+        },
+        cyan: {
+            bg: 'bg-cyan-50',
+            icon: 'bg-cyan-500 text-white',
+            text: 'text-cyan-600',
+            shadow: 'shadow-cyan-500/20'
         }
     };
 

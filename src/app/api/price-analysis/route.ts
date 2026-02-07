@@ -35,13 +35,20 @@ export async function POST(request: NextRequest) {
         const params = body.analysis_params;
 
         // 1. Fetch market data for this location/type/rooms
+        // Note: Mock data stores age_range as 'all' usually, so we don't filter by age purely in DB to miss data
+        // We match city, district, listing_type (lowercase), and rooms
+        const marketQueryType = (params.listing_type || 'apartment').toLowerCase();
+
         const { data: marketData } = await supabase
             .from('market_analysis')
             .select('*')
-            .eq('city', params.city)
-            .eq('district', params.district)
-            .eq('listing_type', params.listing_type || 'apartment')
+            .ilike('city', params.city)
+            .ilike('district', params.district)
+            .eq('listing_type', marketQueryType)
             .eq('rooms', params.rooms)
+            // Get the most recent one
+            .order('updated_at', { ascending: false })
+            .limit(1)
             .single();
 
         // Fallback: try without rooms filter
@@ -50,9 +57,10 @@ export async function POST(request: NextRequest) {
             const { data: fallback } = await supabase
                 .from('market_analysis')
                 .select('*')
-                .eq('city', params.city)
-                .eq('district', params.district)
-                .eq('listing_type', params.listing_type || 'apartment')
+                .ilike('city', params.city)
+                .ilike('district', params.district)
+                .eq('listing_type', marketQueryType)
+                .order('updated_at', { ascending: false })
                 .limit(1);
 
             if (fallback && fallback.length > 0) {
@@ -76,7 +84,14 @@ export async function POST(request: NextRequest) {
             apiKey: process.env.ANTHROPIC_API_KEY,
         });
 
-        const prompt = `Sen bir emlak değerleme ve fiyat analiz uzmanısın.
+        const prompt = `Sen Türkiye emlak piyasasında uzmanlaşmış kıdemli bir mülk değerleme uzmanısın.
+Görev: Aşağıdaki mülk için doğru bir fiyat değerlemesi yapmak.
+
+KRİTİK TALİMAT:
+Sana aşağıda "PAZAR VERİLERİ (Gerçek Veriler)" başlığı altında sunduğum veriler, bu bölgedeki GÜNCEL ve GERÇEK piyasa verileridir.
+Kendi genel bilgini veya eski verilerini DEĞİL, MUTLAKA bu sunduğum istatistikleri (ortalama fiyat, m² fiyatı vb.) baz alarak hesaplama yapmalısın.
+Eğer verilen Pazar Verileri ile kendi tahminin çelişiyorsa, VERİLEN PAZAR VERİLERİNE ÖNCELİK VER.
+Tahminini bu Pazar Verileri etrafında şekillendir.
 
 PORTFÖY BİLGİLERİ
 ═══════════════════════════════════════
@@ -84,22 +99,25 @@ ${listing ? `Başlık: ${listing.title}` : 'Genel Değerleme'}
 ${listing ? `Mevcut Fiyat: ${listing.price?.toLocaleString('tr-TR')} ₺` : ''}
 Metrekare: ${params.sqm} m²
 Oda Sayısı: ${params.rooms}
-Bina Yaşı: ${params.age || 'Belirtilmemiş'}
+Bina Yaşı: ${parseInt(params.age) > 0 ? params.age + ' Yıllık' : 'Sıfır Bina (Yeni)'}
 Lokasyon: ${params.district}, ${params.city}
+Emlak Tipi: ${params.listing_type || 'Konut'}
 ${params.floor ? `Kat: ${params.floor}/${params.total_floors || '?'}` : ''}
 ${params.condition ? `Kondisyon: ${params.condition}` : ''}
 ${params.features?.length ? `Özellikler: ${params.features.join(', ')}` : ''}
 
-PAZAR VERİLERİ ${fallbackMarketData ? '(Gerçek Veriler)' : '(Tahmin)'}
+PAZAR VERİLERİ ${fallbackMarketData ? '(Gerçek Veriler - BUNLARI KULLAN)' : '(Veri Yok - Tahmin Yap)'}
 ═══════════════════════════════════════════
 Bölge: ${params.district}, ${params.city}
 ${fallbackMarketData ? `
-Benzer Portföyler: ${fallbackMarketData.sample_size} satış
-Ortalama Fiyat: ${fallbackMarketData.average_price?.toLocaleString('tr-TR')} ₺
+DURUM: elimizde bu bölge ve özellikler için GÜNCEL veriler var. Analizini buna dayandır.
+Kayıtlı Emsal Sayısı: ${fallbackMarketData.sample_size} adet
+Bölge Ortalaması: ${fallbackMarketData.average_price?.toLocaleString('tr-TR')} ₺
 Medyan Fiyat: ${fallbackMarketData.median_price?.toLocaleString('tr-TR')} ₺
-Fiyat Aralığı: ${fallbackMarketData.min_price?.toLocaleString('tr-TR')} - ${fallbackMarketData.max_price?.toLocaleString('tr-TR')} ₺
-Fiyat/m²: ${fallbackMarketData.price_per_sqm?.toLocaleString('tr-TR')} ₺
-` : 'Bu bölge için pazar verisi bulunamadı. Genel bilgine dayanarak tahmin yap.'}
+Bölge Fiyat Aralığı: ${fallbackMarketData.min_price?.toLocaleString('tr-TR')} - ${fallbackMarketData.max_price?.toLocaleString('tr-TR')} ₺
+Bölge m² Birim Fiyatı: ${fallbackMarketData.price_per_sqm?.toLocaleString('tr-TR')} ₺
+Veri Tarihi: ${new Date(fallbackMarketData.updated_at).toLocaleDateString('tr-TR')}
+` : 'Bu bölge için güncel pazar verisi bulunamadı. Genel piyasa bilgine ve mülk özelliklerine dayanarak en iyi tahminini yap.'}
 
 TALEPLER
 ═════════════

@@ -62,6 +62,23 @@ export default async function DashboardPage() {
             .select('*', { count: 'exact', head: true })
             .eq('agent_id', agent.id);
 
+        // Get total views across all listings
+        // First get all listing IDs for this agent
+        const { data: agentListings } = await supabase
+            .from('listings')
+            .select('id')
+            .eq('agent_id', agent.id);
+
+        let totalViews = 0;
+        if (agentListings && agentListings.length > 0) {
+            const listingIds = agentListings.map(l => l.id);
+            const { count } = await supabase
+                .from('listing_views')
+                .select('*', { count: 'exact', head: true })
+                .in('listing_id', listingIds);
+            totalViews = count || 0;
+        }
+
         // Get recent activity (combine listings and clients)
         const { data: recentClients } = await supabase
             .from('clients')
@@ -130,6 +147,7 @@ export default async function DashboardPage() {
                 totalClients: totalClients || 0,
                 hotClients: hotClients || 0,
                 pdfExports: pdfExports || 0,
+                totalViews: totalViews || 0,
             },
             recentListings: recentListings || [],
             weeklyData,

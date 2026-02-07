@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, FileText, Share2, Loader2, Check, Copy, X } from 'lucide-react';
+import { ArrowLeft, FileText, Share2, Loader2, Check, Copy, X, BarChart3 } from 'lucide-react';
 
 export default function ListingActions({ id }: { id: string }) {
     const [generating, setGenerating] = useState(false);
@@ -79,6 +79,13 @@ export default function ListingActions({ id }: { id: string }) {
                         className="px-6 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all active:scale-95 flex items-center"
                     >
                         Değerleme
+                    </Link>
+                    <Link
+                        href={`/listings/${id}/stats`}
+                        className="px-6 py-2 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all active:scale-95 flex items-center gap-2"
+                    >
+                        <BarChart3 className="h-4 w-4" />
+                        İstatistikler
                     </Link>
                     <Link
                         href={`/listings/${id}/edit`}

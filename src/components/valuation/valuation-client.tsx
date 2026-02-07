@@ -63,13 +63,31 @@ function normalizeResult(raw: any) {
         'Pazar verisi mevcut değil.'
     );
 
-    const recommendations = safeString(
-        raw.recommendations ||
-        raw.recommendation ||
-        raw.advice ||
-        raw.suggestions ||
-        'Önerimiz bulunmamaktadır.'
-    );
+    let recommendations = 'Önerimiz bulunmamaktadır.';
+
+    if (typeof raw.recommendations === 'string') {
+        recommendations = raw.recommendations;
+    } else if (typeof raw.recommendations === 'object' && raw.recommendations !== null) {
+        // If it's an object (from AI JSON), use the notes field or format valuable info
+        if (raw.recommendations.notes) {
+            recommendations = raw.recommendations.notes;
+
+            // Append price info if available
+            if (raw.recommendations.quick_sale_price || raw.recommendations.premium_price) {
+                recommendations += `\n\nHızlı Satış: ${(raw.recommendations.quick_sale_price || 0).toLocaleString('tr-TR')} ₺`;
+                recommendations += `\nPremium Fiyat: ${(raw.recommendations.premium_price || 0).toLocaleString('tr-TR')} ₺`;
+            }
+        } else {
+            // Fallback for object without notes
+            recommendations = JSON.stringify(raw.recommendations);
+        }
+    } else if (raw.recommendation) {
+        recommendations = String(raw.recommendation);
+    } else if (raw.advice) {
+        recommendations = String(raw.advice);
+    } else if (raw.suggestions) {
+        recommendations = String(raw.suggestions);
+    }
 
     return {
         estimated_market_price: estimatedPrice,
