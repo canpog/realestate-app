@@ -1,5 +1,10 @@
 import { createClient } from '@/lib/supabase/server';
-import DashboardClient from '@/components/dashboard/dashboard-client';
+import dynamicImport from 'next/dynamic';
+
+const DashboardClient = dynamicImport(() => import('@/components/dashboard/dashboard-client'), {
+    ssr: false,
+    loading: () => <div className="p-8 flex justify-center"><div className="animate-spin h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full"></div></div>
+});
 
 export const dynamic = 'force-dynamic';
 

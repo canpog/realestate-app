@@ -11,43 +11,68 @@ export async function runValuationAction(listingId: string | null, params: Valua
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Unauthorized');
 
-    console.log('Fetching market data for:', params.city, params.district, params.type, params.rooms);
+    const marketQueryType = (params.type || 'apartment').toLowerCase();
 
-    // 2. Fetch Market Data for this region
-    let marketData = null;
+    console.log('[Valuation Action] Step 1: Exact Match Search:', { city: params.city, district: params.district, type: marketQueryType, rooms: params.rooms });
 
-    // Try precise match
-    const { data: exactMatch } = await supabase
+    // 2. Fetch Market Data for this region (Multi-stage Relaxed Search)
+
+    // Stage 1: Exact Match
+    let { data: marketData } = await supabase
         .from('market_analysis')
         .select('*')
-        .eq('city', params.city)
-        .eq('district', params.district)
-        .eq('listing_type', params.type)
+        .ilike('city', params.city)
+        .ilike('district', params.district)
+        .eq('listing_type', marketQueryType)
         .eq('rooms', params.rooms)
-        .single();
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .single(); // Might return null error if not found, but we check data
 
-    if (exactMatch) {
-        marketData = exactMatch;
-    } else {
-        // Fallback: Try average of the district for the listing type (ignoring rooms)
-        const { data: fallback } = await supabase
+    // Stage 2: Relaxed Location Search (if Exact fails)
+    // Check if district matches either input (user might swap city/district)
+    if (!marketData) {
+        console.log('[Valuation Action] Step 2: Relaxed Location Search');
+
+        // Supabase .or() with ilike is a bit tricky in server actions, let's use a simpler approach:
+        // Search by district ONLY (assuming district is unique enough or user entered it correctly in one of the fields)
+        const { data: relaxedData } = await supabase
             .from('market_analysis')
             .select('*')
-            .eq('city', params.city)
-            .eq('district', params.district)
-            .eq('listing_type', params.type)
-            .limit(1); // Take first one found as a baseline or ideally aggregate
+            .or(`district.ilike.%${params.district}%,district.ilike.%${params.city}%`)
+            .eq('listing_type', marketQueryType)
+            .eq('rooms', params.rooms)
+            .order('updated_at', { ascending: false })
+            .limit(1);
 
-        if (fallback && fallback.length > 0) {
-            marketData = fallback[0];
+        if (relaxedData && relaxedData.length > 0) {
+            marketData = relaxedData[0];
+            console.log('[Valuation Action] Found via Relaxed Search:', marketData);
         }
     }
 
-    console.log('Market Data Found:', marketData ? 'Yes' : 'No');
+    // Stage 3: Fallback (No Rooms Filter) - Broadest search
+    let finalMarketData = marketData;
+    if (!finalMarketData) {
+        console.log('[Valuation Action] Step 3: Fallback (No Rooms Filter)');
+        const { data: fallback } = await supabase
+            .from('market_analysis')
+            .select('*')
+            .or(`district.ilike.%${params.district}%,district.ilike.%${params.city}%`)
+            .eq('listing_type', marketQueryType)
+            .order('updated_at', { ascending: false })
+            .limit(1);
+
+        if (fallback && fallback.length > 0) {
+            finalMarketData = fallback[0];
+            console.log('[Valuation Action] Fallback Data Used:', finalMarketData);
+        }
+    }
+
+    console.log('Final Market Data for AI:', finalMarketData ? 'Yes' : 'No');
 
     // 3. Run AI Valuation
-    // If no market data, the AI will rely on its own knowledge but we warn
-    const valuationResult = await generateValuation(params, marketData, currentPrice);
+    const valuationResult = await generateValuation(params, finalMarketData, currentPrice);
 
     // 4. Save Report
     const { data: agent } = await supabase.from('agents').select('id').eq('auth_user_id', user.id).single();
@@ -56,19 +81,21 @@ export async function runValuationAction(listingId: string | null, params: Valua
         try {
             await supabase.from('price_analysis_reports').insert({
                 agent_id: agent.id,
-                listing_id: listingId, // Can be null now
+                listing_id: listingId,
                 analysis_params: params,
                 estimated_price: valuationResult.estimated_market_price,
-                price_range_min: valuationResult.price_range.min,
-                price_range_max: valuationResult.price_range.max,
+                price_range_min: valuationResult.price_range?.min,
+                price_range_max: valuationResult.price_range?.max,
                 price_score: valuationResult.price_score,
+                price_per_sqm: valuationResult.price_per_sqm,
                 market_comparison: valuationResult.market_comparison,
-                recommendations: valuationResult.recommendations,
-                rental_yield: valuationResult.rental_yield
+                recommendations: valuationResult.recommendations, // Object
+                rental_yield: valuationResult.rental_yield,
+                valuation_notes: valuationResult.valuation_notes || null // Ensure no undefined
             });
         } catch (dbError) {
             console.error('Failed to save report to DB:', dbError);
-            // Verify if listing_id is null and allowed
+            // Non-blocking error
         }
     }
 
