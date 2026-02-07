@@ -13,63 +13,101 @@ export async function runValuationAction(listingId: string | null, params: Valua
 
     const marketQueryType = (params.type || 'apartment').toLowerCase();
 
-    console.log('[Valuation Action] Step 1: Exact Match Search:', { city: params.city, district: params.district, type: marketQueryType, rooms: params.rooms });
+    // Normalize inputs for logging
+    const pCity = params.city.trim();
+    const pDistrict = params.district.trim();
 
-    // 2. Fetch Market Data for this region (Multi-stage Relaxed Search)
+    console.log(`[Valuation Action] Searching for: City='${pCity}', District='${pDistrict}', Type='${marketQueryType}', Rooms='${params.rooms}'`);
 
-    // Stage 1: Exact Match
-    let { data: marketData } = await supabase
+    let marketData = null;
+
+    // Strategy 1: Exact Match
+    // Tries to find record where city=pCity AND district=pDistrict
+    const { data: exactMatch } = await supabase
         .from('market_analysis')
         .select('*')
-        .ilike('city', params.city)
-        .ilike('district', params.district)
+        .ilike('city', pCity)
+        .ilike('district', pDistrict)
         .eq('listing_type', marketQueryType)
         .eq('rooms', params.rooms)
         .order('updated_at', { ascending: false })
         .limit(1)
-        .single(); // Might return null error if not found, but we check data
+        .single();
 
-    // Stage 2: Relaxed Location Search (if Exact fails)
-    // Check if district matches either input (user might swap city/district)
+    if (exactMatch) {
+        marketData = exactMatch;
+        console.log('[Valuation Action] Found via Exact Match');
+    }
+
+    // Strategy 2: Search by District Input (Ignore City)
+    // Maybe user typed correct district but wrong city, or we only care about district match
     if (!marketData) {
-        console.log('[Valuation Action] Step 2: Relaxed Location Search');
-
-        // Supabase .or() with ilike is a bit tricky in server actions, let's use a simpler approach:
-        // Search by district ONLY (assuming district is unique enough or user entered it correctly in one of the fields)
-        const { data: relaxedData } = await supabase
+        const { data: districtMatch } = await supabase
             .from('market_analysis')
             .select('*')
-            .or(`district.ilike.%${params.district}%,district.ilike.%${params.city}%`)
+            .ilike('district', pDistrict)
             .eq('listing_type', marketQueryType)
             .eq('rooms', params.rooms)
             .order('updated_at', { ascending: false })
             .limit(1);
 
-        if (relaxedData && relaxedData.length > 0) {
-            marketData = relaxedData[0];
-            console.log('[Valuation Action] Found via Relaxed Search:', marketData);
+        if (districtMatch && districtMatch.length > 0) {
+            marketData = districtMatch[0];
+            console.log('[Valuation Action] Found via District Input Match');
         }
     }
 
-    // Stage 3: Fallback (No Rooms Filter) - Broadest search
+    // Strategy 3: Search by City Input as District
+    // User might have typed "Marmaris" in the City field
+    if (!marketData) {
+        const { data: swappedMatch } = await supabase
+            .from('market_analysis')
+            .select('*')
+            .ilike('district', pCity)
+            .eq('listing_type', marketQueryType)
+            .eq('rooms', params.rooms)
+            .order('updated_at', { ascending: false })
+            .limit(1);
+
+        if (swappedMatch && swappedMatch.length > 0) {
+            marketData = swappedMatch[0];
+            console.log('[Valuation Action] Found via City Input as District');
+        }
+    }
+
+    // Strategy 4: Fallback (No Rooms Filter) - Search by District Input
     let finalMarketData = marketData;
     if (!finalMarketData) {
-        console.log('[Valuation Action] Step 3: Fallback (No Rooms Filter)');
+        console.log('[Valuation Action] Fallback: Trying broad search (no rooms)...');
         const { data: fallback } = await supabase
             .from('market_analysis')
             .select('*')
-            .or(`district.ilike.%${params.district}%,district.ilike.%${params.city}%`)
+            .ilike('district', pDistrict)
             .eq('listing_type', marketQueryType)
             .order('updated_at', { ascending: false })
             .limit(1);
 
         if (fallback && fallback.length > 0) {
             finalMarketData = fallback[0];
-            console.log('[Valuation Action] Fallback Data Used:', finalMarketData);
+            console.log('[Valuation Action] Fallback Data Found');
+        } else {
+            // Strategy 5: Fallback - Search by City Input as District
+            const { data: fallbackSwapped } = await supabase
+                .from('market_analysis')
+                .select('*')
+                .ilike('district', pCity)
+                .eq('listing_type', marketQueryType)
+                .order('updated_at', { ascending: false })
+                .limit(1);
+
+            if (fallbackSwapped && fallbackSwapped.length > 0) {
+                finalMarketData = fallbackSwapped[0];
+                console.log('[Valuation Action] Fallback Swapped Data Found');
+            }
         }
     }
 
-    console.log('Final Market Data for AI:', finalMarketData ? 'Yes' : 'No');
+    console.log('Final Market Data sent to AI:', finalMarketData ? 'YES (Data Found)' : 'NO (Empty)');
 
     // 3. Run AI Valuation
     const valuationResult = await generateValuation(params, finalMarketData, currentPrice);
@@ -89,13 +127,12 @@ export async function runValuationAction(listingId: string | null, params: Valua
                 price_score: valuationResult.price_score,
                 price_per_sqm: valuationResult.price_per_sqm,
                 market_comparison: valuationResult.market_comparison,
-                recommendations: valuationResult.recommendations, // Object
+                recommendations: valuationResult.recommendations,
                 rental_yield: valuationResult.rental_yield,
-                valuation_notes: valuationResult.valuation_notes || null // Ensure no undefined
+                valuation_notes: valuationResult.valuation_notes || null
             });
         } catch (dbError) {
             console.error('Failed to save report to DB:', dbError);
-            // Non-blocking error
         }
     }
 
