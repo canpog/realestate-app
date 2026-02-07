@@ -33,39 +33,50 @@ export async function POST(request: NextRequest) {
     try {
         const body: PriceAnalysisRequest = await request.json();
         const params = body.analysis_params;
-
-        // 1. Fetch market data for this location/type/rooms
-        // Note: Mock data stores age_range as 'all' usually, so we don't filter by age purely in DB
         const marketQueryType = (params.listing_type || 'apartment').toLowerCase();
 
-        console.log('[PriceAnalysis] Searching for:', { city: params.city, district: params.district, type: marketQueryType, rooms: params.rooms });
+        console.log('[PriceAnalysis] Step 1: Exact Match Search:', { city: params.city, district: params.district, type: marketQueryType, rooms: params.rooms });
 
-        const { data: marketData, error: marketError } = await supabase
+        // 1. Exact Match Strategy
+        let { data: marketData, error: marketError } = await supabase
             .from('market_analysis')
             .select('*')
             .ilike('city', params.city)
             .ilike('district', params.district)
             .eq('listing_type', marketQueryType)
             .eq('rooms', params.rooms)
-            // Get the most recent one
             .order('updated_at', { ascending: false })
             .limit(1)
             .single();
 
-        if (marketError && marketError.code !== 'PGRST116') {
-            console.error('[PriceAnalysis] Query error:', marketError);
+        // 2. Relaxed Location Search Strategy (if Exact fails)
+        // User might have entered "Marmaris" in City field, or vice versa
+        // So we search where district matches EITHER city input OR district input
+        if (!marketData) {
+            console.log('[PriceAnalysis] Step 2: Relaxed Location Search');
+            const { data: relaxedData } = await supabase
+                .from('market_analysis')
+                .select('*')
+                .or(`district.ilike.${params.district},district.ilike.${params.city}`)
+                .eq('listing_type', marketQueryType)
+                .eq('rooms', params.rooms)
+                .order('updated_at', { ascending: false })
+                .limit(1);
+
+            if (relaxedData && relaxedData.length > 0) {
+                marketData = relaxedData[0];
+                console.log('[PriceAnalysis] Found via Relaxed Search:', marketData);
+            }
         }
 
-        console.log('[PriceAnalysis] Market Data Result:', marketData || 'Not found');
-
-        // Fallback: try without rooms filter
+        // 3. Fallback: Relaxed Location WITHOUT Rooms (Broadest search)
         let fallbackMarketData = marketData;
         if (!marketData) {
+            console.log('[PriceAnalysis] Step 3: Fallback (No Rooms Filter)');
             const { data: fallback } = await supabase
                 .from('market_analysis')
                 .select('*')
-                .ilike('city', params.city)
-                .ilike('district', params.district)
+                .or(`district.ilike.${params.district},district.ilike.${params.city}`)
                 .eq('listing_type', marketQueryType)
                 .order('updated_at', { ascending: false })
                 .limit(1);
@@ -95,11 +106,9 @@ export async function POST(request: NextRequest) {
         const prompt = `Sen Türkiye emlak piyasasında uzmanlaşmış kıdemli bir mülk değerleme uzmanısın.
 Görev: Aşağıdaki mülk için doğru bir fiyat değerlemesi yapmak.
 
-KRİTİK TALİMAT:
-Sana aşağıda "PAZAR VERİLERİ (Gerçek Veriler)" başlığı altında sunduğum veriler, bu bölgedeki GÜNCEL ve GERÇEK piyasa verileridir.
-Kendi genel bilgini veya eski verilerini DEĞİL, MUTLAKA bu sunduğum istatistikleri (ortalama fiyat, m² fiyatı vb.) baz alarak hesaplama yapmalısın.
-Eğer verilen Pazar Verileri ile kendi tahminin çelişiyorsa, VERİLEN PAZAR VERİLERİNE ÖNCELİK VER.
-Tahminini bu Pazar Verileri etrafında şekillendir.
+KRİTİK TALİMATLAR:
+1. Sana aşağıda "PAZAR VERİLERİ (Gerçek Veriler)" başlığı altında sunduğum veriler, bu bölgedeki GÜNCEL ve GERÇEK piyasa verileridir. MUTLAKA bu istatistikleri (ortalama fiyat, m² fiyatı vb.) baz alarak hesaplama yap. Eğer genel bilginle çelişirse, VERİLEN PAZAR VERİLERİNE ÖNCELİK VER.
+2. Yanıtındaki "recommendations" objesi içinde MUTLAKA "notes" alanı olmalı. Yoksa bile fiyat anahtarlarını (normal_price, quick_sale_price vb.) eksiksiz dön.
 
 PORTFÖY BİLGİLERİ
 ═══════════════════════════════════════
@@ -130,12 +139,12 @@ Veri Tarihi: ${new Date(fallbackMarketData.updated_at).toLocaleDateString('tr-TR
 TALEPLER
 ═════════════
 1. Tahmini piyasa değeri (min-max aralığı)
-2. Fiyat skoru (0-10, 10=harika fiyat)
+2. Fiyat skoru (0-10)
 3. Fiyat/m² karşılaştırması
-4. Pazar analizi ve karşılaştırma
-5. Fiyatlandırma önerileri (normal, hızlı satış, premium)
-6. Kira getirisi hesaplaması (aylık kira, yıllık getiri %)
-7. Yatırım potansiyeli notu
+4. Pazar analizi
+5. Fiyatlandırma önerileri (normal, hızlı satış, premium) - "recommendations" objesi altında dön
+6. Kira getirisi
+7. Yatırım potansiyeli
 
 JSON formatında yanıt ver:
 {
@@ -148,13 +157,11 @@ JSON formatında yanıt ver:
     "normal_price": 7500000,
     "quick_sale_price": 7150000,
     "premium_price": 7950000,
-    "notes": "Mülkün konumu ve yeni olması sebebiyle liste fiyatı olarak 7.950.000 TL ile piyasaya çıkılması, pazarlık payı ile 7.500.000 TL civarında realize edilmesi önerilir."
+    "notes": "Mülkün konumu ve yeni olması sebebiyle liste fiyatı olarak 7.950.000 TL ile piyasaya çıkılması önerilir."
   },
   "rental_analysis": {
     "estimated_monthly_rent": 45000,
-    "annual_rent": 540000,
-    "rental_yield_percentage": 7.2,
-    "notes": "Yüksek sezon kira potansiyeli ile yıllık getiri %7 civarında olabilir."
+    "rental_yield_percentage": 7.2
   },
   "valuation_notes": "Genel notlar..."
 }`;
@@ -197,10 +204,10 @@ JSON formatında yanıt ver:
         return NextResponse.json({
             success: true,
             analysis: aiAnalysis,
-            market_data_available: !!fallbackMarketData,
+            market_data_available: !!marketData, // Changed from fallbackMarketData to marketData to be stringent
             debug: {
                 searched_for: { city: params.city, district: params.district, type: marketQueryType, rooms: params.rooms },
-                found_data: !!fallbackMarketData
+                found_data: !!marketData
             }
         });
 

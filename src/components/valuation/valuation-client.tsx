@@ -52,42 +52,54 @@ function normalizeResult(raw: any) {
     } else if (typeof raw.recommendations === 'object' && raw.recommendations !== null) {
         const parts = [];
 
-        // Add Notes first
+        // Add Notes first if available
         if (raw.recommendations.notes) {
             parts.push(raw.recommendations.notes);
             parts.push(''); // Spacer
         }
 
-        // Known Price Keys
+        // Comprehensive Price Keys Mapping
         const labels: { [key: string]: string } = {
             suggested_list_price: 'Önerilen Liste Fiyatı',
+            list_price: 'Liste Fiyatı',
+            sale_price: 'Satış Fiyatı',
             normal_price: 'Piyasa Fiyatı',
             quick_sale_price: 'Hızlı Satış Fiyatı',
-            premium_price: 'Premium Fiyat'
+            premium_price: 'Premium Fiyat',
+            min_price: 'Minimum Fiyat',
+            max_price: 'Maksimum Fiyat'
         };
 
+        // Iterate through known labels
         Object.keys(labels).forEach(key => {
             if (raw.recommendations[key] !== undefined) {
                 const val = raw.recommendations[key];
                 if (typeof val === 'number') {
                     parts.push(`${labels[key]}: ${val.toLocaleString('tr-TR')} ₺`);
+                } else if (typeof val === 'string') {
+                    parts.push(`${labels[key]}: ${val}`);
                 }
             }
         });
 
+        // If explicitly no known keys matched but we have other keys, dump them prettily
+        if (parts.length === 0 || (parts.length === 2 && !raw.recommendations.notes)) {
+            Object.entries(raw.recommendations).forEach(([k, v]) => {
+                if (k === 'notes') return; // Already handled
+                if (labels[k]) return; // Already handled
+                if (typeof v === 'object') return; // Skip complex objects
+
+                // Auto-format key: "suggested_price" -> "Suggested Price"
+                const label = k.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                const val = typeof v === 'number' ? `${v.toLocaleString('tr-TR')} ₺` : v;
+                parts.push(`${label}: ${val}`);
+            });
+        }
+
         if (parts.length > 0) {
             recommendations = parts.join('\n');
         } else {
-            // Fallback: format all keys nicely if no known keys found
-            recommendations = Object.entries(raw.recommendations)
-                .filter(([_, v]) => typeof v !== 'object') // Skip nested objects
-                .map(([k, v]) => {
-                    // Convert snake_case to Title Case
-                    const label = labels[k] || k.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-                    const val = typeof v === 'number' ? `${v.toLocaleString('tr-TR')} ₺` : v;
-                    return `${label}: ${val}`;
-                })
-                .join('\n');
+            recommendations = JSON.stringify(raw.recommendations);
         }
     } else if (raw.recommendation) {
         recommendations = String(raw.recommendation);
