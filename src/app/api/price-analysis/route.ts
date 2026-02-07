@@ -35,11 +35,12 @@ export async function POST(request: NextRequest) {
         const params = body.analysis_params;
 
         // 1. Fetch market data for this location/type/rooms
-        // Note: Mock data stores age_range as 'all' usually, so we don't filter by age purely in DB to miss data
-        // We match city, district, listing_type (lowercase), and rooms
+        // Note: Mock data stores age_range as 'all' usually, so we don't filter by age purely in DB
         const marketQueryType = (params.listing_type || 'apartment').toLowerCase();
 
-        const { data: marketData } = await supabase
+        console.log('[PriceAnalysis] Searching for:', { city: params.city, district: params.district, type: marketQueryType, rooms: params.rooms });
+
+        const { data: marketData, error: marketError } = await supabase
             .from('market_analysis')
             .select('*')
             .ilike('city', params.city)
@@ -50,6 +51,12 @@ export async function POST(request: NextRequest) {
             .order('updated_at', { ascending: false })
             .limit(1)
             .single();
+
+        if (marketError && marketError.code !== 'PGRST116') {
+            console.error('[PriceAnalysis] Query error:', marketError);
+        }
+
+        console.log('[PriceAnalysis] Market Data Result:', marketData || 'Not found');
 
         // Fallback: try without rooms filter
         let fallbackMarketData = marketData;
@@ -65,6 +72,7 @@ export async function POST(request: NextRequest) {
 
             if (fallback && fallback.length > 0) {
                 fallbackMarketData = fallback[0];
+                console.log('[PriceAnalysis] Fallback Data Used:', fallbackMarketData);
             }
         }
 
@@ -131,25 +139,24 @@ TALEPLER
 
 JSON formatında yanıt ver:
 {
-  "estimated_market_price": 3800000,
-  "price_range": { "min": 3400000, "max": 4200000 },
-  "price_score": 8.2,
-  "price_per_sqm": 25333,
-  "comparison": "Bu portföy bölge ortalamasından %3.4 pahalı fakat yeni olması sebebiyle uygun fiyatlandırılmıştır.",
+  "estimated_market_price": 7500000,
+  "price_range": { "min": 7100000, "max": 8000000 },
+  "price_score": 8.5,
+  "price_per_sqm": 41666,
+  "comparison": "Bölge ortalaması olan 7.5 milyon TL civarındadır.",
   "recommendations": {
-    "normal_price": 3800000,
-    "quick_sale_price": 3650000,
-    "premium_price": 4050000,
-    "notes": "Bölgenin en çok aranan lokasyonunda konumlanması fiyata premium katmaktadır."
+    "normal_price": 7500000,
+    "quick_sale_price": 7150000,
+    "premium_price": 7950000,
+    "notes": "Mülkün konumu ve yeni olması sebebiyle liste fiyatı olarak 7.950.000 TL ile piyasaya çıkılması, pazarlık payı ile 7.500.000 TL civarında realize edilmesi önerilir."
   },
   "rental_analysis": {
-    "estimated_monthly_rent": 18500,
-    "annual_rent": 222000,
-    "rental_yield_percentage": 5.8,
-    "notes": "Benzer mülkler aylık 16.500-21.000 ₺ arası kiraya verilmektedir."
+    "estimated_monthly_rent": 45000,
+    "annual_rent": 540000,
+    "rental_yield_percentage": 7.2,
+    "notes": "Yüksek sezon kira potansiyeli ile yıllık getiri %7 civarında olabilir."
   },
-  "valuation_notes": "Yeni inşaat, tam donanım ve iyi lokasyon bu mülkü pazarda tercih edilen hale getirmektedir.",
-  "investment_potential": "Yüksek - Turizm bölgesi, yüksek talepli konum, kira potansiyeli var"
+  "valuation_notes": "Genel notlar..."
 }`;
 
         const response = await anthropic.messages.create({
@@ -191,6 +198,10 @@ JSON formatında yanıt ver:
             success: true,
             analysis: aiAnalysis,
             market_data_available: !!fallbackMarketData,
+            debug: {
+                searched_for: { city: params.city, district: params.district, type: marketQueryType, rooms: params.rooms },
+                found_data: !!fallbackMarketData
+            }
         });
 
     } catch (error: any) {

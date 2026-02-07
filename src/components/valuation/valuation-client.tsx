@@ -6,14 +6,14 @@ import { type ValuationParams } from '@/types/valuation';
 import { ArrowLeft, Calculator, Check, AlertCircle, TrendingUp, Info } from 'lucide-react';
 import Link from 'next/link';
 
-// Helper to safely extract number from AI response (handles various formats)
+// Helper to safely extract number from AI response
 function safeNumber(val: any): number {
     if (typeof val === 'number') return val;
     if (typeof val === 'string') return parseInt(val.replace(/[^\d]/g, ''), 10) || 0;
     return 0;
 }
 
-// Helper to safely get string from AI response
+// Helper to safely get string
 function safeString(val: any): string {
     if (typeof val === 'string') return val;
     if (typeof val === 'object' && val !== null) return JSON.stringify(val);
@@ -22,64 +22,72 @@ function safeString(val: any): string {
 
 // Normalize AI response to expected format
 function normalizeResult(raw: any) {
-    // Handle various possible AI response formats
     const estimatedPrice = safeNumber(
-        raw.estimated_market_price ||
-        raw.listing_price ||
-        raw.market_price ||
-        raw.price ||
-        raw.value ||
-        0
+        raw.estimated_market_price || raw.listing_price || raw.market_price || raw.price || raw.value || 0
     );
 
     const priceMin = safeNumber(
-        raw.price_range?.min ||
-        raw.quick_sale_price ||
-        raw.min_price ||
-        estimatedPrice * 0.9
+        raw.price_range?.min || raw.quick_sale_price || raw.min_price || estimatedPrice * 0.9
     );
 
     const priceMax = safeNumber(
-        raw.price_range?.max ||
-        raw.listing_price ||
-        raw.max_price ||
-        estimatedPrice * 1.1
+        raw.price_range?.max || raw.listing_price || raw.max_price || estimatedPrice * 1.1
     );
 
     const priceScore = safeNumber(
-        raw.price_score ||
-        raw.score ||
-        raw.rating ||
-        5
+        raw.price_score || raw.score || raw.rating || 5
     );
 
     const rentalYield = raw.rental_yield || raw.yield || raw.rental_return || null;
 
     const marketComparison = safeString(
-        raw.market_comparison ||
-        raw.analysis ||
-        raw.comparison ||
-        raw.market_analysis ||
-        'Pazar verisi mevcut değil.'
+        raw.market_comparison || raw.analysis || raw.comparison || raw.market_analysis || 'Pazar verisi mevcut değil.'
     );
 
+    // Enhanced Recommendations Parsing
     let recommendations = 'Önerimiz bulunmamaktadır.';
 
     if (typeof raw.recommendations === 'string') {
         recommendations = raw.recommendations;
     } else if (typeof raw.recommendations === 'object' && raw.recommendations !== null) {
-        // If it's an object (from AI JSON), use the notes field or format valuable info
-        if (raw.recommendations.notes) {
-            recommendations = raw.recommendations.notes;
+        const parts = [];
 
-            // Append price info if available
-            if (raw.recommendations.quick_sale_price || raw.recommendations.premium_price) {
-                recommendations += `\n\nHızlı Satış: ${(raw.recommendations.quick_sale_price || 0).toLocaleString('tr-TR')} ₺`;
-                recommendations += `\nPremium Fiyat: ${(raw.recommendations.premium_price || 0).toLocaleString('tr-TR')} ₺`;
+        // Add Notes first
+        if (raw.recommendations.notes) {
+            parts.push(raw.recommendations.notes);
+            parts.push(''); // Spacer
+        }
+
+        // Known Price Keys
+        const labels: { [key: string]: string } = {
+            suggested_list_price: 'Önerilen Liste Fiyatı',
+            normal_price: 'Piyasa Fiyatı',
+            quick_sale_price: 'Hızlı Satış Fiyatı',
+            premium_price: 'Premium Fiyat'
+        };
+
+        Object.keys(labels).forEach(key => {
+            if (raw.recommendations[key] !== undefined) {
+                const val = raw.recommendations[key];
+                if (typeof val === 'number') {
+                    parts.push(`${labels[key]}: ${val.toLocaleString('tr-TR')} ₺`);
+                }
             }
+        });
+
+        if (parts.length > 0) {
+            recommendations = parts.join('\n');
         } else {
-            // Fallback for object without notes
-            recommendations = JSON.stringify(raw.recommendations);
+            // Fallback: format all keys nicely if no known keys found
+            recommendations = Object.entries(raw.recommendations)
+                .filter(([_, v]) => typeof v !== 'object') // Skip nested objects
+                .map(([k, v]) => {
+                    // Convert snake_case to Title Case
+                    const label = labels[k] || k.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                    const val = typeof v === 'number' ? `${v.toLocaleString('tr-TR')} ₺` : v;
+                    return `${label}: ${val}`;
+                })
+                .join('\n');
         }
     } else if (raw.recommendation) {
         recommendations = String(raw.recommendation);
@@ -128,7 +136,6 @@ export default function ValuationClient({ listing }: { listing?: any }) {
         setError(null);
         try {
             const data = await runValuationAction(listing?.id || null, params, listing?.price);
-            // Normalize the AI response to expected format
             const normalized = normalizeResult(data);
             setResult(normalized);
         } catch (e: any) {
@@ -195,7 +202,11 @@ export default function ValuationClient({ listing }: { listing?: any }) {
                                     <TrendingUp className="h-8 w-8 text-green-600" />
                                     <div>
                                         <div className="text-xs font-bold opacity-70 uppercase">Yıllık Kira Getirisi</div>
-                                        <div className="text-xl font-black">%{result.rental_yield}</div>
+                                        <div className="text-xl font-black">
+                                            {typeof result.rental_yield === 'number' ? `%${result.rental_yield}` :
+                                                typeof result.rental_yield === 'object' ? `%${result.rental_yield.rental_yield_percentage || result.rental_yield.yield || 0}` :
+                                                    result.rental_yield.toString()}
+                                        </div>
                                     </div>
                                 </div>
                             )}
@@ -207,7 +218,7 @@ export default function ValuationClient({ listing }: { listing?: any }) {
                                     <Info className="h-5 w-5 mr-2 text-blue-500" />
                                     Pazar Analizi
                                 </h4>
-                                <p className="text-gray-600 text-sm leading-relaxed bg-blue-50/50 p-4 rounded-xl border border-blue-50">
+                                <p className="text-gray-600 text-sm leading-relaxed bg-blue-50/50 p-4 rounded-xl border border-blue-50 whitespace-pre-wrap">
                                     {result.market_comparison}
                                 </p>
                             </div>
@@ -217,7 +228,7 @@ export default function ValuationClient({ listing }: { listing?: any }) {
                                     <Check className="h-5 w-5 mr-2 text-green-500" />
                                     Öneriler
                                 </h4>
-                                <p className="text-gray-600 text-sm leading-relaxed bg-green-50/50 p-4 rounded-xl border border-green-50">
+                                <p className="text-gray-600 text-sm leading-relaxed bg-green-50/50 p-4 rounded-xl border border-green-50 whitespace-pre-wrap">
                                     {result.recommendations}
                                 </p>
                             </div>
