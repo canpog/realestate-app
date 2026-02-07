@@ -107,7 +107,6 @@ export async function GET(request: NextRequest) {
                         price_per_sqm: stats.price_per_sqm,
                         sample_size: stats.sample_size,
                         snapshot_date: new Date().toISOString(),
-                        data_source: 'simulated',
                     });
 
                     // Market_analysis güncelle (upsert)
@@ -125,9 +124,7 @@ export async function GET(request: NextRequest) {
                             median_price: stats.median_price,
                             price_per_sqm: stats.price_per_sqm,
                             sample_size: stats.sample_size,
-                            last_scraped: new Date().toISOString(),
                             updated_at: new Date().toISOString(),
-                            data_source: 'simulated',
                         }, {
                             onConflict: 'city,district,listing_type,rooms,age_range',
                         });
