@@ -260,7 +260,7 @@ export default function ValuationClient({ listing }: { listing?: any }) {
                         İlana Dön
                     </Link>
                 ) : (
-                    <div className="text-sm font-bold text-gray-400 mb-4">Hızlı Değerleme Aracı</div>
+                    <div className="text-sm font-bold text-gray-400 mb-4">Hızlı Değerleme Aracı (v1.2)</div>
                 )}
                 <h1 className="text-3xl font-extrabold text-gray-900">Fiyat Analizi & Değerleme</h1>
                 <p className="text-gray-500 mt-2">
