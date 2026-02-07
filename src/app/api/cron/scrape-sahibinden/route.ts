@@ -6,8 +6,9 @@ import { createClient } from '@supabase/supabase-js';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 minutes max for Vercel Pro
 
-// Chromium binary URL for serverless - must match @sparticuz/chromium-min version
-const CHROMIUM_BINARY_URL = 'https://github.com/nickmilo/chromium/releases/download/v130.0.0/chromium-v130.0.0-pack.tar';
+// Chromium binary URL for serverless - from Sparticuz/chromium releases
+// Use x64 for Vercel serverless functions
+const CHROMIUM_BINARY_URL = 'https://github.com/Sparticuz/chromium/releases/download/v121.0.0/chromium-v121.0.0-pack.x64.tar';
 
 interface ScrapedProperty {
     title: string;
